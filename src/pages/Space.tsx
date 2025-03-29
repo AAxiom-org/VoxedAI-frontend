@@ -24,7 +24,7 @@ import Note from '../components/Note';
 import { useNavigate, useParams } from 'react-router-dom';
 import Sandbox from '../components/code/Sandbox';
 import { useSupabaseUser } from '../contexts/UserContext';
-import { getSpaceFiles, deleteFile, uploadAndProcessFile, processFile } from '../services/fileUpload';
+import { getSpaceFiles, deleteFile, uploadAndProcessFile, processFile, deleteFileWithRetry } from '../services/fileUpload';
 import { getSpace } from '../services/spaceService';
 import { useMobile } from '../contexts/MobileContext';
 import type { SpaceFile } from '../types/space';
@@ -95,20 +95,37 @@ const Space = () => {
   
   // Create a new setter for selectedNoteId
   const setSelectedNote = (noteId: string | null) => {
-    setLayout({ 
-      selectedNoteId: noteId,
-      // If a note is selected, ensure notes view is active
-      ...(noteId ? { selectedView: 'notes' } : {})
-    });
+    console.log('📝 Setting selected note in Space component:', noteId);
+    
+    if (noteId) {
+      // First ensure notes view is active
+      setLayout({ selectedView: 'notes' });
+      
+      // Then set the selectedNoteId in a separate call
+      setTimeout(() => {
+        console.log('🔗 Setting selectedNoteId in URL from Space component:', noteId);
+        setLayout({ selectedNoteId: noteId });
+      }, 0);
+    } else {
+      // If clearing the note, do it in one step
+      setLayout({ 
+        selectedNoteId: null
+      });
+    }
   };
 
   // Function to open a specific note
   const openNote = (noteId: string) => {
-    // Update the layout state in a single call to avoid race conditions
-    setLayout({
-      selectedView: 'notes',
-      selectedNoteId: noteId
-    });
+    console.log('📂 Opening note from Space component:', noteId);
+    
+    // First set the view mode
+    setLayout({ selectedView: 'notes' });
+    
+    // Then set the selectedNoteId in a separate call
+    setTimeout(() => {
+      console.log('🔗 Setting selectedNoteId in URL from openNote function:', noteId);
+      setLayout({ selectedNoteId: noteId });
+    }, 0);
   };
 
   // Function to show notes list without a selected note
@@ -164,7 +181,8 @@ const Space = () => {
     setIsLoadingFiles(true);
     try {
       console.log("Fetching files for spaceId:", spaceId);
-      const { success, data } = await getSpaceFiles(spaceId);
+      const supabaseClient = await getSupabaseClient();
+      const { success, data } = await getSpaceFiles(spaceId, supabaseClient);
       console.log("Files response:", { success, data });
       if (success && data) {
         // Convert to ExtendedFile with visibility property
@@ -189,7 +207,8 @@ const Space = () => {
     try {
       console.log("Fetching notes for spaceId:", spaceId);
       // Filter notes by is_note flag in the query
-      const { success, data } = await getSpaceFiles(spaceId);
+      const supabaseClient = await getSupabaseClient();
+      const { success, data } = await getSpaceFiles(spaceId, supabaseClient);
       console.log("Notes response:", { success, data });
       if (success && data) {
         // Filter notes on the client side
@@ -273,15 +292,8 @@ const Space = () => {
           file,
           spaceId,
           supabaseUserId,
-          async () => {
-            // Simple no-op refresh token function
-            console.log("Token refresh requested but not implemented in this component");
-          },
-          async () => {
-            // Simple function that returns the default supabase client
-            console.log("Getting supabase client");
-            return supabase;
-          },
+          refreshSupabaseToken,
+          getSupabaseClient,
           false // isNote
         );
         
@@ -311,7 +323,7 @@ const Space = () => {
         console.error('Error uploading file:', error);
       }
     }
-  }, [spaceId, supabaseUserId]);
+  }, [spaceId, supabaseUserId, refreshSupabaseToken, getSupabaseClient]);
 
   // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,15 +342,8 @@ const Space = () => {
         file,
         spaceId,
         supabaseUserId,
-        async () => {
-          // Simple no-op refresh token function
-          console.log("Token refresh requested but not implemented in this component");
-        },
-        async () => {
-          // Simple function that returns the default supabase client
-          console.log("Getting supabase client");
-          return supabase;
-        },
+        refreshSupabaseToken,
+        getSupabaseClient,
         false // isNote
       );
       
@@ -384,8 +389,13 @@ const Space = () => {
     );
     
     try {
-      const { success } = await deleteFile(fileId);
-      if (success) {
+      const result = await deleteFileWithRetry(
+        fileId,
+        refreshSupabaseToken,
+        getSupabaseClient
+      );
+      
+      if (result.success) {
         // Remove file from list
         setFiles(prev => prev.filter(file => file.id !== fileId));
       } else {
@@ -398,7 +408,7 @@ const Space = () => {
       }
     } catch (error) {
       console.error('Error deleting file:', error);
-      // Reset deleting state
+      // Reset deleting state if there was an error
       setFiles(prev => 
         prev.map(file => 
           file.id === fileId ? { ...file, isDeletingFile: false } : file
@@ -612,11 +622,21 @@ const Space = () => {
     );
     
     try {
-      const { success } = await deleteFile(noteId);
-      if (success) {
+      const result = await deleteFileWithRetry(
+        noteId,
+        refreshSupabaseToken,
+        getSupabaseClient
+      );
+
+      if (result.success) {
         // Remove note from list
         setNotes(prev => prev.filter(note => note.id !== noteId));
         toast.success("Note deleted successfully");
+        
+        // If the deleted note was selected, clear the selection
+        if (selectedNoteId === noteId) {
+          setSelectedNote(null);
+        }
       } else {
         // Reset deleting state if failed
         setNotes(prev => 
@@ -725,7 +745,10 @@ const Space = () => {
                 <div className="h-full py-2 overflow-auto">
                     <Note 
                       noteId={safeSelectedNoteId} 
-                      onNoteSelect={setSelectedNote} 
+                      onNoteSelect={(id) => {
+                        console.log('Note selection from Note component:', id);
+                        setSelectedNote(id);
+                      }} 
                     />
                 </div>
                 <div className="h-full overflow-auto">

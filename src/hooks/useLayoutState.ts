@@ -43,7 +43,17 @@ export function useLayoutState(
 
   // Wrapper to allow partial updates
   const setLayout = (newLayout: Partial<LayoutOptions>) => {
-    setLayoutRaw({ ...layout, ...newLayout });
+    console.log('🔄 Updating layout state:', newLayout);
+    
+    // Handle the case where selectedNoteId is explicitly set to null
+    const updatedLayout = { ...layout, ...newLayout };
+    
+    // Ensure null values are properly preserved
+    if ('selectedNoteId' in newLayout && newLayout.selectedNoteId === null) {
+      updatedLayout.selectedNoteId = null;
+    }
+    
+    setLayoutRaw(updatedLayout);
   };
 
   return [layout, setLayout];

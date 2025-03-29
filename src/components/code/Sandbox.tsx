@@ -5,6 +5,8 @@ import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { githubLight, atomDark } from "@codesandbox/sandpack-themes";
 import { FaColumns, FaChevronDown, FaEyeSlash, FaPlus, FaTrash, FaSortDown, FaSortUp, FaKey } from "react-icons/fa";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useSupabaseUser } from "../../contexts/UserContext";
+import { deleteFileWithRetry } from "../../services/fileUpload";
 
 import { python } from "@codemirror/lang-python";
 
@@ -19,6 +21,7 @@ interface FileData {
   active: boolean;
   isMain?: boolean;
   generationOrder: number;
+  id?: string;
 }
 
 interface Files {
@@ -150,6 +153,7 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, setLayoutMode, is
 
 export default function Sandbox() {
   const { theme } = useTheme();
+  const { getSupabaseClient, refreshSupabaseToken } = useSupabaseUser();
   const [layoutMode, setLayoutMode] = useState<SandpackLayoutMode>("console");
   const [codeExecutionResult, setCodeExecutionResult] = useState<CodeExecutionResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -228,10 +232,29 @@ export default function Sandbox() {
   };
 
   // Delete file handler
-  const handleDeleteFile = (filename: string) => {
+  const handleDeleteFile = async (filename: string) => {
     // Don't delete if it's the only file or if it's the main file
     if (fileKeys.length <= 1 || files[filename].isMain) {
       return;
+    }
+    
+    // If this is a file from the database (it has an id), delete it there first
+    if (files[filename].id) {
+      try {
+        const result = await deleteFileWithRetry(
+          files[filename].id as string,
+          refreshSupabaseToken,
+          getSupabaseClient
+        );
+        
+        if (!result.success) {
+          console.error("Failed to delete file from database:", result.error);
+          return;
+        }
+      } catch (error) {
+        console.error("Error deleting file:", error);
+        return;
+      }
     }
     
     const newFiles = { ...files };

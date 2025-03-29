@@ -161,7 +161,10 @@ const NoteList: React.FC<NoteListProps> = ({
               } cursor-pointer`}
               onMouseEnter={() => setHoveredNote(note.id)}
               onMouseLeave={() => setHoveredNote(null)}
-              onClick={() => onNoteClick(note.id)}
+              onClick={() => {
+                console.log('Note clicked in NoteList:', note.id);
+                onNoteClick(note.id);
+              }}
             >
               <div className="flex justify-between items-center">
                 <div>

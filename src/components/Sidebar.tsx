@@ -3,6 +3,8 @@ import {
   Library, 
   File, 
   FileText,
+  FileImage,
+  FileVideo2,
   Plus, 
   ChevronDown, 
   ChevronRight, 
@@ -14,6 +16,7 @@ import {
   Eye,
   EyeOff,
   Folder,
+  NotebookPen,
   Link,
   Sun,
   Loader
@@ -96,11 +99,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   // Get file type icon
   const getFileTypeIcon = (fileType: string) => {
     if (fileType.includes('image')) {
-      return <File size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
+      return <FileImage size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
     } else if (fileType.includes('text') || fileType.includes('document') || fileType.includes('pdf')) {
       return <FileText size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
-    } else if (fileType.includes('javascript') || fileType.includes('code') || fileType.includes('json') || fileType.includes('html') || fileType.includes('css')) {
+    } else if (fileType.includes('python') || fileType.includes('javascript') || fileType.includes('code') || fileType.includes('json') || fileType.includes('html') || fileType.includes('css')) {
       return <Code size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
+    } else if (fileType.includes('video')) {
+      return <FileVideo2 size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
     } else {
       return <File size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
     }
@@ -202,7 +207,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }
               }}
             >
-              <FileText size={16} className="text-gray-500 mr-2" />
+              <NotebookPen size={16} className="text-gray-500 mr-2" />
               <span className="text-sm text-adaptive">Notes</span>
             </div>
             <div className="flex items-center">
@@ -404,7 +409,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <div className="flex items-center overflow-hidden">
                       {file.metadata?.emoji ? (
-                        <span className="mr-2 flex-shrink-0">{file.metadata.emoji}</span>
+                        <NotebookPen size={14} className="text-gray-500 mr-2 flex-shrink-0" />
                       ) : (
                         getFileTypeIcon(file.file_type)
                       )}

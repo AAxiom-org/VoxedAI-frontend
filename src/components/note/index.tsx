@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
-import { getSpaceFiles, deleteFile } from '../../services/fileUpload';
+import { getSpaceFiles, deleteFile, deleteFileWithRetry } from '../../services/fileUpload';
 import toast from 'react-hot-toast';
 import { useSupabaseUser } from '../../contexts/UserContext';
 import { useLayoutState } from '../../hooks/useLayoutState';
@@ -37,14 +37,18 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { supabaseUserId, getSupabaseClient } = useSupabaseUser();
+  const { supabaseUserId, getSupabaseClient, refreshSupabaseToken } = useSupabaseUser();
 
   // Get selectedNoteId from layout state with fallback to prop
-  const selectedNote = layout.selectedNoteId || noteId || null;
+  const selectedNote = noteId !== undefined && noteId !== null 
+    ? noteId
+    : layout.selectedNoteId;
 
   // Update layout when noteId prop changes
   useEffect(() => {
-    if (noteId !== layout.selectedNoteId) {
+    console.log('NotesInterface props changed:', { noteId, currentLayout: layout });
+    if (noteId !== undefined && noteId !== layout.selectedNoteId) {
+      console.log('Setting layout from prop:', noteId);
       setLayout({ 
         selectedNoteId: noteId,
         selectedView: noteId ? 'notes' : layout.selectedView
@@ -52,21 +56,20 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     }
   }, [noteId, layout.selectedNoteId, layout.selectedView, setLayout]);
 
-  // If a note is selected and notes are loaded, load its content
+  // If a note is selected and notes are loaded, load its content - with improved reliability
   useEffect(() => {
-    if (selectedNote && notes.length > 0) {
+    if (selectedNote && notes.length > 0 && !selectedNoteContent) {
+      console.log(`🔄 Loading content for note ${selectedNote} from effect`);
       const noteFile = notes.find(note => note.id === selectedNote);
       if (noteFile) {
-        loadNoteContent(noteFile).then(content => {
-          if (content) {
-            setSelectedNoteContent(content);
-          }
-        });
+        (async () => {
+          await loadNoteContent(noteFile);
+        })();
       } else {
-        console.log(`Note with ID ${selectedNote} not found in notes list, waiting for notes to load...`);
+        console.log(`Note with ID ${selectedNote} not found in notes list of length ${notes.length}`);
       }
     }
-  }, [selectedNote, notes]);
+  }, [selectedNote, notes, selectedNoteContent]);
 
   // Extract title from metadata or filename
   const getNoteTitleFromMetadata = (note?: SpaceFile): string => {
@@ -107,7 +110,8 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     setIsLoading(true);
     try {
       console.log("Fetching notes for NotesInterface, spaceId:", spaceId);
-      const { success, data } = await getSpaceFiles(spaceId);
+      const supabaseClient = await getSupabaseClient();
+      const { success, data } = await getSpaceFiles(spaceId, supabaseClient);
       console.log("Notes response in NotesInterface:", { success, data });
       if (success && data) {
         // Filter notes on the client side
@@ -131,7 +135,8 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     if (!spaceId) return;
     
     try {
-      const { success, data } = await getSpaceFiles(spaceId);
+      const supabaseClient = await getSupabaseClient();
+      const { success, data } = await getSpaceFiles(spaceId, supabaseClient);
       if (success && data) {
         // Filter out notes, we only want regular files
         const filesOnly = data.filter(file => !file.is_note);
@@ -155,7 +160,9 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     }
     console.log('Loading note content for filepath:', noteFile.file_path);
 
+    // Set loading state
     setIsLoadingNoteContent(true);
+    
     try {
       const supabaseClient = await getSupabaseClient();
       const { data, error } = await supabaseClient.storage
@@ -163,23 +170,50 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
         .download(noteFile.file_path);
 
       if (error) {
+        console.error('Storage error:', error);
         throw error;
       }
 
       if (!data) {
+        console.error('No data returned from storage for:', noteFile.file_path);
         throw new Error('No data returned from storage');
       }
 
       // Read the file content as text
       const content = await data.text();
-      setSelectedNoteContent(content);
+      console.log('Note content loaded, length:', content.length, 'for note ID:', noteFile.id);
+      
+      // Only update content if this is still the selected note
+      // This prevents race conditions with multiple notes being clicked
+      if (selectedNote === noteFile.id) {
+        setSelectedNoteContent(content);
+      } else {
+        console.warn('Note ID changed during content load, discarding result');
+      }
+      
       return content;
     } catch (error) {
       console.error('Error loading note content:', error);
       toast.error('Failed to load note content');
+      
+      // Only set error state if this is still the selected note
+      if (selectedNote === noteFile.id) {
+        setSelectedNoteContent(JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Error loading note content. Please try again." }]
+            }
+          ]
+        }));
+      }
       return null;
     } finally {
-      setIsLoadingNoteContent(false);
+      // Only clear loading if this is still the selected note
+      if (selectedNote === noteFile.id) {
+        setIsLoadingNoteContent(false);
+      }
     }
   };
 
@@ -219,32 +253,65 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
   };
 
   const handleNoteClick = async (noteId: string) => {
-    // Update layout state with the selected note and view
-    setLayout({ 
-      selectedNoteId: noteId,
-      selectedView: 'notes'
-    });
+    console.log(`🖱️ Note clicked: ${noteId}`);
     
-    // Notify parent component about the note selection
-    if (onNoteSelect) {
-      onNoteSelect(noteId);
+    // Set loading state first to prevent UI flicker
+    setIsLoadingNoteContent(true);
+    
+    // Use a more direct approach to update layout state
+    // First ensure the view is set to 'notes'
+    setLayout({ selectedView: 'notes' });
+    
+    // Then in a separate call, update the selectedNoteId
+    // This helps avoid race conditions in URL state updates
+    setTimeout(() => {
+      console.log(`🔗 Setting selectedNoteId in URL to: ${noteId}`);
+      setLayout({ selectedNoteId: noteId });
+      
+      // Notify parent component about the note selection
+      if (onNoteSelect) {
+        onNoteSelect(noteId);
+      }
+    }, 0);
+    
+    // Only clear content when changing notes
+    if (selectedNote !== noteId) {
+      setSelectedNoteContent('');
     }
     
     // Find the note in our list
     const noteFile = notes.find(note => note.id === noteId);
     if (noteFile) {
-      await loadNoteContent(noteFile);
+      console.log(`🔍 Found note file, loading content...`);
+      try {
+        await loadNoteContent(noteFile);
+      } catch (error) {
+        console.error('Error loading note content during click handler:', error);
+        // Make sure we aren't stuck in loading state
+        setIsLoadingNoteContent(false);
+      }
+    } else {
+      console.error(`❌ Note with ID ${noteId} not found in notes list of length ${notes.length}`);
+      setIsLoadingNoteContent(false);
     }
   };
 
   const handleCloseEditor = () => {
-    // Clear the selected note in layout
-    setLayout({ selectedNoteId: null });
+    console.log('🚪 Closing note editor');
     
-    // Notify parent component about closing the note
-    if (onNoteSelect) {
-      onNoteSelect(null);
-    }
+    // First ensure we're still in notes view
+    setLayout({ selectedView: 'notes' });
+    
+    // Then explicitly set the selectedNoteId to null in a separate call
+    setTimeout(() => {
+      console.log('🔗 Clearing selectedNoteId in URL');
+      setLayout({ selectedNoteId: null });
+      
+      // Notify parent component about closing the note
+      if (onNoteSelect) {
+        onNoteSelect(null);
+      }
+    }, 0);
   };
 
   const handleSaveNote = async (content: string) => {
@@ -273,11 +340,20 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     );
     
     try {
-      const { success } = await deleteFile(noteId);
-      if (success) {
+      const result = await deleteFileWithRetry(
+        noteId,
+        refreshSupabaseToken,
+        getSupabaseClient
+      );
+
+      if (result.success) {
         // Remove note from list
         setNotes(prev => prev.filter(note => note.id !== noteId));
-        toast.success("Note deleted successfully");
+        
+        // If the deleted note was selected, clear the selection
+        if (selectedNote === noteId) {
+          handleCloseEditor();
+        }
       } else {
         // Reset deleting state if failed
         setNotes(prev => 
@@ -285,11 +361,9 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
             note.id === noteId ? { ...note, isDeletingFile: false } : note
           )
         );
-        toast.error("Failed to delete note");
       }
     } catch (error) {
       console.error('Error deleting note:', error);
-      toast.error("Error deleting note");
       // Reset deleting state
       setNotes(prev => 
         prev.map(note => 
@@ -443,6 +517,23 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     setIsModalOpen(true);
   };
 
+  // Debug logs to track state changes
+  useEffect(() => {
+    console.log('NotesInterface state:', { 
+      noteId, 
+      layoutSelectedNoteId: layout.selectedNoteId, 
+      selectedNote, 
+      notesLength: notes.length
+    });
+  }, [noteId, layout.selectedNoteId, selectedNote, notes.length]);
+
+  // Ensure selectedNote state is properly initialized and updated
+  useEffect(() => {
+    if (layout.selectedNoteId !== selectedNote) {
+      console.log('Updating selected note from layout:', layout.selectedNoteId);
+    }
+  }, [layout.selectedNoteId, selectedNote]);
+
   return (
     <div className="flex flex-col w-full h-full overflow-hidden">
       {!selectedNote ? (
@@ -458,24 +549,24 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
         />
       ) : (
         <>
-          {/* Show loading indicator while loading note content */}
+          {/* Show loading indicator as an overlay while loading content */}
           {isLoadingNoteContent && (
-            <div className="flex items-center justify-center h-full w-full bg-white dark:bg-gray-900">
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
                 <p className="mt-4 text-gray-600 dark:text-gray-400">Loading note...</p>
               </div>
             </div>
           )}
-          {(!isLoadingNoteContent || selectedNoteContent) && (
-            <NoteEditor
-              onClose={handleCloseEditor}
-              noteId={selectedNote}
-              noteContent={selectedNoteContent}
-              onSave={handleSaveNote}
-              noteName={selectedNote ? getNoteTitleFromMetadata(notes.find(n => n.id === selectedNote)) : 'Note'}
-            />
-          )}
+          
+          {/* Always render the editor if a note is selected */}
+          <NoteEditor
+            onClose={handleCloseEditor}
+            noteId={selectedNote}
+            noteContent={selectedNoteContent || ''}
+            onSave={handleSaveNote}
+            noteName={getNoteTitleFromMetadata(notes.find(n => n.id === selectedNote))}
+          />
         </>
       )}
       

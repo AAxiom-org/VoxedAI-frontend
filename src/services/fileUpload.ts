@@ -1,4 +1,3 @@
-import { supabase } from "./supabase";
 import type { SpaceFile } from "../types/space";
 
 /**
@@ -7,7 +6,7 @@ import type { SpaceFile } from "../types/space";
  * @param file The file to upload
  * @param spaceId The ID of the space to associate the file with
  * @param userId The ID of the user uploading the file
- * @param supabaseClient Optional authenticated Supabase client
+ * @param supabaseClient Authenticated Supabase client
  * @param retryCount Number of times to retry on auth errors
  */
 export async function uploadFile(
@@ -15,7 +14,7 @@ export async function uploadFile(
   isNote: boolean = false,
   spaceId: string,
   userId: string,
-  supabaseClient = supabase,
+  supabaseClient: any,
   retryCount: number = 0,
 ): Promise<{
   success: boolean;
@@ -146,11 +145,11 @@ export async function uploadFile(
 /**
  * Fetches all files for a space
  * @param spaceId The ID of the space to fetch files for
- * @param supabaseClient Optional authenticated Supabase client
+ * @param supabaseClient Authenticated Supabase client
  */
 export async function getSpaceFiles(
   spaceId: string,
-  supabaseClient = supabase,
+  supabaseClient: any,
 ): Promise<{ success: boolean; data?: SpaceFile[]; error?: any }> {
   try {
     const { data, error } = await supabaseClient
@@ -429,7 +428,6 @@ export async function deleteFileWithRetry(
   getClientFn: () => Promise<any>,
 ): Promise<{ success: boolean, error?: any }> {
   // Function to handle file deletion with retry logic
-  getClientFn;
   const deleteWithRetryInternal = async (retryCount = 0): Promise<any> => {
     try {
       // If retrying, refresh the token first

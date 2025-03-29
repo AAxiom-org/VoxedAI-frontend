@@ -52,24 +52,27 @@ export function useUrlState<T>({
   const setValue = (value: T) => {
     try {
       const serialized = serializer(value);
+      console.log(`🔗 Updating URL state for key "${key}":`, value);
       
       // Update search params
       const newSearchParams = new URLSearchParams(searchParams);
       
-      // Only add the param if it's not the default value
-      if (JSON.stringify(value) !== JSON.stringify(defaultValue)) {
-        newSearchParams.set(key, serialized);
-      } else {
-        // Remove the param if it's the default value
+      // Always update the parameter even if it matches the default value
+      // This ensures the URL is always updated when setState is called
+      if (value === null || value === undefined) {
         newSearchParams.delete(key);
+      } else {
+        newSearchParams.set(key, serialized);
       }
       
-      setSearchParams(newSearchParams);
+      // Update the URL without causing a navigation event
+      setSearchParams(newSearchParams, { replace: true });
       
-      // Update query cache
+      // Force an update to the query cache
       queryClient.setQueryData(queryKey, value);
+      console.log(`✅ URL state updated for "${key}"`);
     } catch (error) {
-      console.error(`Failed to serialize value for URL param ${key}:`, error);
+      console.error(`❌ Failed to serialize value for URL param ${key}:`, error);
       // If serialization fails, at least update the query cache
       queryClient.setQueryData(queryKey, value);
     }
