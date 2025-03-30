@@ -56,20 +56,35 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     }
   }, [noteId, layout.selectedNoteId, layout.selectedView, setLayout]);
 
-  // If a note is selected and notes are loaded, load its content - with improved reliability
+  // IMPORTANT: Reset note content when selected note changes
   useEffect(() => {
-    if (selectedNote && notes.length > 0 && !selectedNoteContent) {
-      console.log(`🔄 Loading content for note ${selectedNote} from effect`);
-      const noteFile = notes.find(note => note.id === selectedNote);
-      if (noteFile) {
-        (async () => {
-          await loadNoteContent(noteFile);
-        })();
-      } else {
-        console.log(`Note with ID ${selectedNote} not found in notes list of length ${notes.length}`);
+    if (selectedNote) {
+      console.log(`Selected note changed to ${selectedNote}, clearing content state`);
+      setSelectedNoteContent('');
+      setIsLoadingNoteContent(true);
+      
+      // Load the content for the selected note
+      if (notes.length > 0) {
+        const noteFile = notes.find(note => note.id === selectedNote);
+        if (noteFile) {
+          loadNoteContent(noteFile);
+        } else {
+          console.log(`Note with ID ${selectedNote} not found in notes list`);
+          setIsLoadingNoteContent(false);
+        }
       }
     }
-  }, [selectedNote, notes, selectedNoteContent]);
+  }, [selectedNote]);
+
+  // Fetch notes and load note content when notes are loaded
+  useEffect(() => {
+    if (selectedNote && notes.length > 0 && !selectedNoteContent) {
+      const noteFile = notes.find(note => note.id === selectedNote);
+      if (noteFile) {
+        loadNoteContent(noteFile);
+      }
+    }
+  }, [notes, selectedNote, selectedNoteContent]);
 
   // Extract title from metadata or filename
   const getNoteTitleFromMetadata = (note?: SpaceFile): string => {
@@ -160,7 +175,6 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     }
     console.log('Loading note content for filepath:', noteFile.file_path);
 
-    // Set loading state
     setIsLoadingNoteContent(true);
     
     try {
@@ -184,11 +198,8 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
       console.log('Note content loaded, length:', content.length, 'for note ID:', noteFile.id);
       
       // Only update content if this is still the selected note
-      // This prevents race conditions with multiple notes being clicked
       if (selectedNote === noteFile.id) {
         setSelectedNoteContent(content);
-      } else {
-        console.warn('Note ID changed during content load, discarding result');
       }
       
       return content;
@@ -210,10 +221,7 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
       }
       return null;
     } finally {
-      // Only clear loading if this is still the selected note
-      if (selectedNote === noteFile.id) {
-        setIsLoadingNoteContent(false);
-      }
+      setIsLoadingNoteContent(false);
     }
   };
 
@@ -252,66 +260,28 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
     }
   };
 
-  const handleNoteClick = async (noteId: string) => {
-    console.log(`🖱️ Note clicked: ${noteId}`);
+  // Simplified note click handler
+  const handleNoteClick = (noteId: string) => {
+    console.log(`Note clicked: ${noteId}`);
     
-    // Set loading state first to prevent UI flicker
-    setIsLoadingNoteContent(true);
+    // Directly update the layout state
+    setLayout({ 
+      selectedView: 'notes',
+      selectedNoteId: noteId 
+    });
     
-    // Use a more direct approach to update layout state
-    // First ensure the view is set to 'notes'
-    setLayout({ selectedView: 'notes' });
-    
-    // Then in a separate call, update the selectedNoteId
-    // This helps avoid race conditions in URL state updates
-    setTimeout(() => {
-      console.log(`🔗 Setting selectedNoteId in URL to: ${noteId}`);
-      setLayout({ selectedNoteId: noteId });
-      
-      // Notify parent component about the note selection
-      if (onNoteSelect) {
-        onNoteSelect(noteId);
-      }
-    }, 0);
-    
-    // Only clear content when changing notes
-    if (selectedNote !== noteId) {
-      setSelectedNoteContent('');
-    }
-    
-    // Find the note in our list
-    const noteFile = notes.find(note => note.id === noteId);
-    if (noteFile) {
-      console.log(`🔍 Found note file, loading content...`);
-      try {
-        await loadNoteContent(noteFile);
-      } catch (error) {
-        console.error('Error loading note content during click handler:', error);
-        // Make sure we aren't stuck in loading state
-        setIsLoadingNoteContent(false);
-      }
-    } else {
-      console.error(`❌ Note with ID ${noteId} not found in notes list of length ${notes.length}`);
-      setIsLoadingNoteContent(false);
+    // Notify parent component
+    if (onNoteSelect) {
+      onNoteSelect(noteId);
     }
   };
 
+  // Simplified close handler
   const handleCloseEditor = () => {
-    console.log('🚪 Closing note editor');
-    
-    // First ensure we're still in notes view
-    setLayout({ selectedView: 'notes' });
-    
-    // Then explicitly set the selectedNoteId to null in a separate call
-    setTimeout(() => {
-      console.log('🔗 Clearing selectedNoteId in URL');
-      setLayout({ selectedNoteId: null });
-      
-      // Notify parent component about closing the note
-      if (onNoteSelect) {
-        onNoteSelect(null);
-      }
-    }, 0);
+    setLayout({
+      selectedView: 'notes',
+      selectedNoteId: null
+    });
   };
 
   const handleSaveNote = async (content: string) => {
@@ -491,7 +461,7 @@ const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect })
         // Close the modal
         setIsModalOpen(false);
         
-        // Update layout state with the selected note and view
+        // Update selected note and content
         setLayout({ 
           selectedNoteId: newNoteFile.id,
           selectedView: 'notes'

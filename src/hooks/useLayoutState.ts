@@ -1,11 +1,12 @@
 import { useUrlState } from './useUrlState';
 
-export type LayoutOptions = {
-  sidebarOpen?: boolean;
-  filesExpanded?: boolean;
-  notesExpanded?: boolean;
-  selectedView?: 'chat' | 'notes' | 'files' | 'code';
-  selectedNoteId?: string | null;
+// Default layout state shape
+interface LayoutState {
+  sidebarOpen: boolean;
+  filesExpanded: boolean;
+  notesExpanded: boolean;
+  selectedView: 'chat' | 'notes' | 'code';
+  selectedNoteId: string | null;
   rightPanelCollapsed?: boolean;
   panelSizes?: {
     sidebar?: number;
@@ -13,7 +14,8 @@ export type LayoutOptions = {
   };
 };
 
-const defaultLayout: LayoutOptions = {
+// Default state values
+const DEFAULT_LAYOUT: LayoutState = {
   sidebarOpen: true,
   filesExpanded: false,
   notesExpanded: true,
@@ -27,34 +29,31 @@ const defaultLayout: LayoutOptions = {
 };
 
 /**
- * A hook for managing UI layout state in the URL
- * @param initialLayout - Optional overrides for the default layout values
- * @returns A tuple containing the current layout and a setter function
+ * Custom hook to manage and persist layout state in the URL
+ * 
+ * @param initialState - Optional override of default layout values
+ * @returns [layout, setLayout] - Current layout state and setter function
  */
-export function useLayoutState(
-  initialLayout: Partial<LayoutOptions> = {}
-): [LayoutOptions, (layout: Partial<LayoutOptions>) => void] {
-  const mergedDefaults = { ...defaultLayout, ...initialLayout };
+export function useLayoutState(initialState: Partial<LayoutState> = {}) {
+  // Merge defaults with provided initial values
+  const defaultValues = { ...DEFAULT_LAYOUT, ...initialState };
   
-  const [layout, setLayoutRaw] = useUrlState<LayoutOptions>({
+  // Use url state for persistence
+  const [layout, setLayoutRaw] = useUrlState<LayoutState>({
     key: 'layout',
-    defaultValue: mergedDefaults,
+    defaultValue: defaultValues
   });
-
-  // Wrapper to allow partial updates
-  const setLayout = (newLayout: Partial<LayoutOptions>) => {
-    console.log('🔄 Updating layout state:', newLayout);
+  
+  // Wrapper function to handle partial updates
+  const setLayout = (updates: Partial<LayoutState>) => {
+    console.log('Updating layout state:', updates);
     
-    // Handle the case where selectedNoteId is explicitly set to null
-    const updatedLayout = { ...layout, ...newLayout };
-    
-    // Ensure null values are properly preserved
-    if ('selectedNoteId' in newLayout && newLayout.selectedNoteId === null) {
-      updatedLayout.selectedNoteId = null;
-    }
-    
-    setLayoutRaw(updatedLayout);
+    // Combine current state with updates in a single call
+    setLayoutRaw({
+      ...layout,
+      ...updates
+    });
   };
-
-  return [layout, setLayout];
+  
+  return [layout, setLayout] as const;
 } 

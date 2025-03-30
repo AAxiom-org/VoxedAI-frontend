@@ -95,37 +95,24 @@ const Space = () => {
   
   // Create a new setter for selectedNoteId
   const setSelectedNote = (noteId: string | null) => {
-    console.log('📝 Setting selected note in Space component:', noteId);
+    console.log('Setting selected note:', noteId);
     
-    if (noteId) {
-      // First ensure notes view is active
-      setLayout({ selectedView: 'notes' });
-      
-      // Then set the selectedNoteId in a separate call
-      setTimeout(() => {
-        console.log('🔗 Setting selectedNoteId in URL from Space component:', noteId);
-        setLayout({ selectedNoteId: noteId });
-      }, 0);
-    } else {
-      // If clearing the note, do it in one step
-      setLayout({ 
-        selectedNoteId: null
-      });
-    }
+    // Update the layout state in a single call
+    setLayout({ 
+      selectedView: 'notes',
+      selectedNoteId: noteId 
+    });
   };
 
-  // Function to open a specific note
+  // Function to open a specific note - simplified
   const openNote = (noteId: string) => {
-    console.log('📂 Opening note from Space component:', noteId);
+    console.log('Opening note:', noteId);
     
-    // First set the view mode
-    setLayout({ selectedView: 'notes' });
-    
-    // Then set the selectedNoteId in a separate call
-    setTimeout(() => {
-      console.log('🔗 Setting selectedNoteId in URL from openNote function:', noteId);
-      setLayout({ selectedNoteId: noteId });
-    }, 0);
+    // Update layout in a single call
+    setLayout({ 
+      selectedView: 'notes',
+      selectedNoteId: noteId 
+    });
   };
 
   // Function to show notes list without a selected note
