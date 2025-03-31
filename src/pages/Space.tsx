@@ -23,6 +23,7 @@ import ChatInterface from '../components/chat/Chat';
 import Note from '../components/Note';
 import { useNavigate, useParams } from 'react-router-dom';
 import Sandbox from '../components/code/Sandbox';
+import Brain from '../components/Brain';
 import { useSupabaseUser } from '../contexts/UserContext';
 import { getSpaceFiles, deleteFile, uploadAndProcessFile, processFile, deleteFileWithRetry } from '../services/fileUpload';
 import { getSpace } from '../services/spaceService';
@@ -84,6 +85,7 @@ const Space = () => {
   const showChat = selectedView === 'chat';
   const showNote = selectedView === 'notes';
   const showSandbox = selectedView === 'code';
+  const showBrain = selectedView === 'brain';
   
   // Update state setters to work with the layout state
   const setSidebarOpen = (open: boolean) => setLayout({ sidebarOpen: open });
@@ -92,7 +94,7 @@ const Space = () => {
   const setShowChat = (show: boolean) => show && setLayout({ selectedView: 'chat', selectedNoteId: null });
   const setShowNote = (show: boolean) => show && setLayout({ selectedView: 'notes' });
   const setShowSandbox = (show: boolean) => show && setLayout({ selectedView: 'code', selectedNoteId: null });
-  
+  const setShowBrain = (show: boolean) => show && setLayout({ selectedView: 'brain', selectedNoteId: null });
   // Create a new setter for selectedNoteId
   const setSelectedNote = (noteId: string | null) => {
     console.log('Setting selected note:', noteId);
@@ -713,6 +715,7 @@ const Space = () => {
             handleDeleteNote={handleDeleteNote}
             createNewNote={createNewNote}
             handleNewFile={handleNewFile}
+            setShowBrain={setShowBrain}
             setShowChat={setShowChat}
             setShowNote={setShowNote}
             setShowSandbox={setShowSandbox}
@@ -747,6 +750,16 @@ const Space = () => {
             <ResizablePanel defaultRatio={0.7}>
                 <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
                     <Sandbox />
+                </div>
+                <div className="h-full overflow-auto">
+                  <ChatInterface sidebarOpen={sidebarOpen} simplified={true} />
+                </div>
+            </ResizablePanel>
+        )}
+        {!showNote && !showChat && !showSandbox && showBrain && (
+            <ResizablePanel defaultRatio={0.7}>
+                <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
+                    <Brain />
                 </div>
                 <div className="h-full overflow-auto">
                   <ChatInterface sidebarOpen={sidebarOpen} simplified={true} />

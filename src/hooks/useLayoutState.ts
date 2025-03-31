@@ -5,7 +5,7 @@ interface LayoutState {
   sidebarOpen: boolean;
   filesExpanded: boolean;
   notesExpanded: boolean;
-  selectedView: 'chat' | 'notes' | 'code';
+  selectedView: 'chat' | 'notes' | 'code' | 'brain';
   selectedNoteId: string | null;
   rightPanelCollapsed?: boolean;
   panelSizes?: {
@@ -19,7 +19,7 @@ const DEFAULT_LAYOUT: LayoutState = {
   sidebarOpen: true,
   filesExpanded: false,
   notesExpanded: true,
-  selectedView: 'chat',
+  selectedView: 'brain',
   selectedNoteId: null,
   rightPanelCollapsed: false,
   panelSizes: {

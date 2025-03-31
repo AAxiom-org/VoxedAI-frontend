@@ -17,7 +17,7 @@ import {
   EyeOff,
   Folder,
   NotebookPen,
-  Link,
+  Brain,
   Sun,
   Loader
 } from 'lucide-react';
@@ -53,6 +53,7 @@ interface SidebarProps {
   handleDeleteNote: (id: string) => void;
   createNewNote: () => void;
   handleNewFile: (type: string) => void;
+  setShowBrain: (show: boolean) => void;
   setShowChat: (show: boolean) => void;
   setShowNote: (show: boolean) => void;
   setShowSandbox: (show: boolean) => void;
@@ -79,6 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   handleDeleteNote,
   createNewNote,
   handleNewFile,
+  setShowBrain,
   setShowChat,
   setShowNote,
   setShowSandbox,
@@ -154,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Search */}
+      {/* Chat */}
       <div className="mx-4 my-2">
         <button 
           onClick={() => {
@@ -178,6 +180,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             </path>
           </svg>
           <a className="text-sm">Chat With Vox</a>
+        </button>
+      </div>
+
+      {/* Second Brain */}
+      <div className="mx-4 my-2">
+        <button 
+          onClick={() => {
+            setShowBrain(true);
+            setShowChat(false);
+            setShowNote(false);
+            setShowSandbox(false);
+          }} 
+          className="text-gray-400 w-full rounded-md px-3 py-2 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+        >
+          <Brain size={24} />
+          <a className="text-sm">Second Brain</a>
         </button>
       </div>
 
