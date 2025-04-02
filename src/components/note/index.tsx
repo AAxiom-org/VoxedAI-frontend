@@ -22,7 +22,7 @@ interface NotesInterfaceProps {
   onNoteSelect?: (noteId: string | null) => void;
 }
 
-const NotesInterface: React.FC<NotesInterfaceProps> = ({ noteId, onNoteSelect }) => {
+const NotesInterface = ({ noteId, onNoteSelect }: NotesInterfaceProps) => {
   const { id: spaceId } = useParams<{ id: string }>();
   const [layout, setLayout] = useLayoutState();
   const [searchQuery, setSearchQuery] = useState('');

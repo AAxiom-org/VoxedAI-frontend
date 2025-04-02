@@ -11,13 +11,13 @@ interface ResizablePanelProps {
   collapsible?: boolean; // Whether the right panel can be collapsed
 }
 
-const ResizablePanel: React.FC<ResizablePanelProps> = ({
+const ResizablePanel = ({
   children,
   defaultRatio = 0.7,
   minLeftWidth = 300,
   minRightWidth = 200,
   collapsible = true,
-}) => {
+}: ResizablePanelProps) => {
   const [ratio, setRatio] = useState<number>(defaultRatio);
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const isMobile = useMobile();

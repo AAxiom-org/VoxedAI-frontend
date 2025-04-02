@@ -9,7 +9,7 @@ interface EmojiPickerModalProps {
   }
 
 // EmojiPickerModal component
-const EmojiPickerModal: React.FC<EmojiPickerModalProps> = ({ onEmojiSelect, selectedEmoji }) => {
+const EmojiPickerModal = ({ onEmojiSelect, selectedEmoji }: EmojiPickerModalProps) => {
     const [showPicker, setShowPicker] = useState(false);
   
     const handleEmojiClick = (emojiData: EmojiClickData) => {

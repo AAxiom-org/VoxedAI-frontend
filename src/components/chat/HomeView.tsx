@@ -18,7 +18,7 @@ interface HomeViewProps {
   onViewAllClick: () => void;
 }
 
-const HomeView: React.FC<HomeViewProps> = ({
+const HomeView = ({
   inputMessage,
   setInputMessage,
   handleSendMessage,
@@ -30,7 +30,7 @@ const HomeView: React.FC<HomeViewProps> = ({
   chatSessions,
   onChatSessionClick,
   onViewAllClick,
-}) => {
+}: HomeViewProps) => {
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   
   // Toggle the model dropdown

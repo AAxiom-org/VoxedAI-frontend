@@ -19,7 +19,7 @@ interface ChatInterfaceProps {
   simplified?: boolean;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ sidebarOpen, simplified = false }) => {
+const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) => {
   // This component uses URL state management for persistent state
   // We store currentSessionId, view mode, and chat settings in the URL
   // This allows for sharing links and preserving state on refresh

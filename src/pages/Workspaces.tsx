@@ -52,7 +52,7 @@ interface SpaceItem {
 }
 
 // SpaceModal component
-const SpaceModal: React.FC<SpaceModalProps> = ({ 
+const SpaceModal = ({ 
   isOpen, 
   onClose, 
   onSubmit, 
@@ -60,7 +60,7 @@ const SpaceModal: React.FC<SpaceModalProps> = ({
   initialData, 
   isEditing, 
   selectedWorkspaceId 
-}) => {
+}: SpaceModalProps) => {
   const MAX_TITLE_LENGTH = 30;
   const MAX_DESCRIPTION_LENGTH = 300;
   const { supabaseUserId } = useSupabaseUser();

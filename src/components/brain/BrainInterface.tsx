@@ -3,13 +3,10 @@ interface BrainInterfaceProps {
     setCurrentView: (view: 'main' | 'graph' | 'detailed') => void;
 }
 
-const BrainInterface: React.FC<BrainInterfaceProps> = ({
+const BrainInterface  = ({
     currentView,
     setCurrentView,
-  }: {
-    currentView: 'main' | 'graph';
-    setCurrentView: (view: 'main' | 'graph' | 'detailed') => void;
-  }) => {
+  }: BrainInterfaceProps) => {
     return (
         <div className="h-full w-full flex flex-col items-center justify-center relative overflow-hidden">
             {currentView === 'main' && (

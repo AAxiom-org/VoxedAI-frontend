@@ -100,7 +100,7 @@ const safelyParseContent = (jsonString: string) => {
 };
 
 // Import the BlockNote component that will be displayed when a note is clicked
-const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({ onClose, noteId, noteContent, onSave, noteName }) => {
+const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName }: BlockNoteEditorProps) => {
   const { theme } = useTheme();
   const [content, setContent] = useState<string>(noteContent);
   const [isLoading, setIsLoading] = useState<boolean>(!noteContent);

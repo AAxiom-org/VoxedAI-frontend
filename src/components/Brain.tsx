@@ -4,7 +4,7 @@ import BrainInterface from "./brain/BrainInterface"
 import { useLayoutState } from "../hooks/useLayoutState";
 
 interface BrainProps {
-    spaceId: string;
+    spaceId: string | undefined;
 }
 
 export default function Brain({ spaceId }: BrainProps) {

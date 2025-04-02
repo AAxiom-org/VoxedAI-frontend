@@ -10,14 +10,14 @@ interface TooltipProps {
   delayDuration?: number;
 }
 
-const Tooltip: React.FC<TooltipProps> = ({
+const Tooltip = ({
   children,
   content,
   title,
   side = "top",
   align = "center",
   delayDuration = 300,
-}) => {
+}: TooltipProps) => {
   return (
     <TooltipPrimitive.Provider delayDuration={delayDuration}>
       <TooltipPrimitive.Root>

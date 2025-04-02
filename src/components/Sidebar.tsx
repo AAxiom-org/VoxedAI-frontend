@@ -63,7 +63,7 @@ interface SidebarProps {
   showNotesList?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
+const Sidebar = ({
   spaceName,
   files,
   notes,
@@ -88,7 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   handleFileUpload,
   openNote,
   showNotesList
-}) => {
+}: SidebarProps) => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [filesExpanded, setFilesExpanded] = useState(false);

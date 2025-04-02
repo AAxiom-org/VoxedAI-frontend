@@ -5,10 +5,10 @@ interface LoadingSpinnerProps {
   className?: string;
 }
 
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+const LoadingSpinner = ({
   size = "medium",
   className = "",
-}) => {
+}: LoadingSpinnerProps) => {
   const sizeClasses = {
     small: "h-4 w-4 border-2",
     medium: "h-8 w-8 border-2",

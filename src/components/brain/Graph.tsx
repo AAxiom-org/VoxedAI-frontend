@@ -35,20 +35,15 @@ interface HierarchicalGraphProps {
   currentView: 'graph' | 'detailed';
   setCurrentView: (view: 'main' | 'graph' | 'detailed', nodeId?: string) => void;
   selectedNodeId?: string | null;
-  spaceId?: string;
+  spaceId?: string | undefined;
 }
 
-const HierarchicalGraph: React.FC<HierarchicalGraphProps> = ({
+const HierarchicalGraph = ({
   currentView,
   setCurrentView,
   selectedNodeId,
   spaceId,
-}: {
-  currentView: 'graph' | 'detailed';
-  setCurrentView: (view: 'main' | 'graph' | 'detailed', nodeId?: string) => void;
-  selectedNodeId?: string | null;
-  spaceId?: string;
-}) => {
+}: HierarchicalGraphProps) => {
   // Get Supabase client from UserContext
   const { getSupabaseClient } = useSupabaseUser();
 

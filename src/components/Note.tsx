@@ -7,7 +7,7 @@ interface NoteProps {
   onNoteSelect?: (noteId: string | null) => void;
 }
 
-const Note: React.FC<NoteProps> = ({ noteId, onNoteSelect }) => {
+const Note = ({ noteId, onNoteSelect }: NoteProps) => {
   const [layout, setLayout] = useLayoutState();
   
   // Sync the layout state with the noteId prop whenever it changes

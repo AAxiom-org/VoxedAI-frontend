@@ -11,13 +11,13 @@ interface NoteModalProps {
   availableFiles: SpaceFile[];
 }
 
-const NoteModal: React.FC<NoteModalProps> = ({ 
+const NoteModal = ({ 
   isOpen, 
   onClose, 
   onCreateNote, 
   isCreating,
   availableFiles
-}) => {
+}: NoteModalProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);

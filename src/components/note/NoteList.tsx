@@ -22,7 +22,7 @@ interface NoteListProps {
   isCreatingNote: boolean;
 }
 
-const NoteList: React.FC<NoteListProps> = ({
+const NoteList = ({
   notes,
   isLoading,
   searchQuery,
@@ -31,7 +31,7 @@ const NoteList: React.FC<NoteListProps> = ({
   onDeleteNote,
   onCreateNote,
   isCreatingNote
-}) => {
+}: NoteListProps) => {
   const [hoveredNote, setHoveredNote] = useState<string | null>(null);
   const { user } = useUser();
 

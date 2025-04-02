@@ -14,11 +14,11 @@ interface ChatGridProps {
   onBackClick: () => void;
 }
 
-const ChatGrid: React.FC<ChatGridProps> = ({
+const ChatGrid = ({
   chatSessions,
   onChatSessionClick,
   onBackClick,
-}) => {
+}: ChatGridProps) => {
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [sessionsWithMessages, setSessionsWithMessages] = useState<ChatSessionWithLastMessage[]>([]);

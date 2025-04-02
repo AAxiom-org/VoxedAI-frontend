@@ -44,10 +44,10 @@ interface AgentWorkflowIndicatorProps {
   darkMode?: boolean;
 }
 
-const AgentWorkflowIndicator: React.FC<AgentWorkflowIndicatorProps> = ({
+const AgentWorkflowIndicator = ({
   className = "",
   darkMode = false,
-}) => {
+}: AgentWorkflowIndicatorProps) => {
   // Auto-detect system color scheme if not explicitly set
   const [isDarkMode, setIsDarkMode] = useState(darkMode);
 

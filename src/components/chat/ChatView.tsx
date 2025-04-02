@@ -245,7 +245,7 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
   );
 };
 
-const ChatView: React.FC<ChatViewProps> = ({
+const ChatView = ({
   messages,
   isStreaming,
   streamingContent,
@@ -262,7 +262,7 @@ const ChatView: React.FC<ChatViewProps> = ({
   onBackClick,
   sidebarOpen,
   simplified = false,
-}) => {
+}: ChatViewProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const [lastMessageCount, setLastMessageCount] = useState(0);
