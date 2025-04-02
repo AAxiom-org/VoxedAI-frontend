@@ -7,7 +7,9 @@ interface LayoutState {
   notesExpanded: boolean;
   selectedView: 'chat' | 'notes' | 'code' | 'brain';
   selectedNoteId: string | null;
+  selectedNodeId?: string | null;
   rightPanelCollapsed?: boolean;
+  brainView?: 'main' | 'graph' | 'detailed';
   panelSizes?: {
     sidebar?: number;
     main?: number;
@@ -21,7 +23,9 @@ const DEFAULT_LAYOUT: LayoutState = {
   notesExpanded: true,
   selectedView: 'brain',
   selectedNoteId: null,
+  selectedNodeId: null,
   rightPanelCollapsed: false,
+  brainView: 'graph',
   panelSizes: {
     sidebar: 250,
     main: 700,

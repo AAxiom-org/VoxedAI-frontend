@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
-import MarkdownRenderer from './MarkdownRenderer';
+import MarkdownRenderer from '../common/MarkdownRenderer';
 
 // Define TypeScript interfaces
 interface GraphNode {
@@ -32,15 +32,18 @@ interface DetailedGraphs {
 
 interface HierarchicalGraphProps {
   currentView: 'graph' | 'detailed';
-  setCurrentView: (view: 'graph' | 'detailed') => void;
+  setCurrentView: (view: 'main' | 'graph' | 'detailed', nodeId?: string) => void;
+  selectedNodeId?: string | null;
 }
 
 const HierarchicalGraph: React.FC<HierarchicalGraphProps> = ({
   currentView,
   setCurrentView,
+  selectedNodeId,
 }: {
   currentView: 'graph' | 'detailed';
-  setCurrentView: (view: 'graph' | 'detailed') => void;
+  setCurrentView: (view: 'main' | 'graph' | 'detailed', nodeId?: string) => void;
+  selectedNodeId?: string | null;
 }) => {
   // State to track whether we're in the main view or a node's detailed view
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -581,8 +584,8 @@ Q[state, action] = Q[state, action] + alpha * (
     `
   };
   
-  // Define our graph data
-  const mainGraphData: GraphData = {
+  // Use useMemo for static graph data to prevent unnecessary re-renders
+  const mainGraphData = useMemo<GraphData>(() => ({
     nodes: [
       {id: "Concept1", group: 1, label: "Machine Learning", size: 15, color: "#4361EE", noteId: "Concept1"},
       {id: "Concept2", group: 2, label: "Neural Networks", size: 12, color: "#3A0CA3", noteId: "Concept2"},
@@ -598,10 +601,10 @@ Q[state, action] = Q[state, action] + alpha * (
       {source: "Concept2", target: "Concept3"},
       {source: "Concept4", target: "Concept5"}
     ]
-  };
+  }), []);
   
-  // Define detailed subgraphs for each main node
-  const detailedGraphs: DetailedGraphs = {
+  // Use useMemo for detailed graphs to prevent re-renders
+  const detailedGraphs = useMemo<DetailedGraphs>(() => ({
     "Concept1": {
       nodes: [
         {id: "Concept1", group: 1, label: "Machine Learning", size: 20, type: "circle", noteId: "Concept1"},
@@ -669,24 +672,57 @@ Q[state, action] = Q[state, action] + alpha * (
         {source: "Concept5", target: "Note3"}
       ]
     }
-  };
+  }), []);
   
-  useEffect(() => {
-    // Set initial graph data
-    setGraphData(mainGraphData);
-  }, []);
+  // Initialize graph on first render
+  const initializedRef = useRef(false);
   
+  // Initial setup - only runs once
   useEffect(() => {
+    // Set initial graph data based on current view
+    if (currentView === 'detailed' && selectedNode && detailedGraphs[selectedNode.id]) {
+      // If we're already in detailed view (e.g., after a reload), show detailed graph
+      setGraphData(detailedGraphs[selectedNode.id]);
+    } else {
+      // Otherwise show main graph
+      setGraphData(mainGraphData);
+    }
+    
+    // Mark as initialized
+    initializedRef.current = true;
+    
+    // This effect only runs once on mount, but we include dependencies to satisfy the linter
+  }, [currentView, selectedNode, detailedGraphs, mainGraphData]);
+  
+  // Handle view changes - only runs after initialization
+  useEffect(() => {
+    // Skip on first render since initialization handles that
+    if (!initializedRef.current) return;
+    
     // When view changes, update the graph
     if (currentView === 'graph') {
+      // Reset selected node when returning to main graph
+      setSelectedNode(null);
       setGraphData(mainGraphData);
     } else if (currentView === 'detailed' && selectedNode) {
+      // Show detailed view of the selected node
       const nodeId = selectedNode.id;
       if (detailedGraphs[nodeId]) {
         setGraphData(detailedGraphs[nodeId]);
       }
     }
-  }, [currentView, selectedNode]);
+  }, [currentView, selectedNode, detailedGraphs, mainGraphData]);
+  
+  // Find node by ID on first render if selectedNodeId is provided
+  useEffect(() => {
+    // If we have a selectedNodeId but no selectedNode yet, find it from the main graph
+    if (selectedNodeId && !selectedNode && mainGraphData) {
+      const node = mainGraphData.nodes.find(n => n.id === selectedNodeId);
+      if (node) {
+        setSelectedNode(node);
+      }
+    }
+  }, [selectedNodeId, selectedNode, mainGraphData]);
   
   useEffect(() => {
     // When the graph data changes or is initially set
@@ -731,7 +767,7 @@ Q[state, action] = Q[state, action] + alpha * (
     if (currentView === 'graph' && detailedGraphs[node.id]) {
       // First-level navigation: from main graph to detailed graph
       setSelectedNode(node);
-      setCurrentView('detailed');
+      setCurrentView('detailed', node.id);
     } else if (currentView === 'detailed' && node.noteId) {
       // Second-level navigation: from detailed graph to markdown content
       if (mockMarkdownData[node.noteId]) {
@@ -925,7 +961,7 @@ Q[state, action] = Q[state, action] + alpha * (
           onClick={handleBackClick}
           className="absolute top-4 left-4 px-4 py-2 z-10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          ← Back to Main View
+          ← Back to Topics
         </button>
       )}
       
