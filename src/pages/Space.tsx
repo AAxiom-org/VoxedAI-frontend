@@ -697,7 +697,7 @@ const Space = () => {
 
       {/* Sidebar - only rendered when open */}
       {sidebarOpen && (
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 z-1">
           <Sidebar
             spaceName={spaceName}
             files={files}
@@ -757,9 +757,14 @@ const Space = () => {
             </ResizablePanel>
         )}
         {!showNote && !showChat && !showSandbox && showBrain && (
-          <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
-            <Brain />
-          </div>
+          <ResizablePanel defaultRatio={0.7}>
+            <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
+              <Brain />
+            </div>
+            <div className="h-full overflow-auto">
+              <ChatInterface sidebarOpen={sidebarOpen} simplified={true} />
+            </div>
+          </ResizablePanel>
         )}
       </div>
 

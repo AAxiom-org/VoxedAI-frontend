@@ -30,14 +30,52 @@ interface DetailedGraphs {
   [key: string]: GraphData;
 }
 
-const HierarchicalGraph: React.FC = () => {
+interface HierarchicalGraphProps {
+  currentView: 'graph' | 'detailed';
+  setCurrentView: (view: 'graph' | 'detailed') => void;
+}
+
+const HierarchicalGraph: React.FC<HierarchicalGraphProps> = ({
+  currentView,
+  setCurrentView,
+}: {
+  currentView: 'graph' | 'detailed';
+  setCurrentView: (view: 'graph' | 'detailed') => void;
+}) => {
   // State to track whether we're in the main view or a node's detailed view
-  const [currentView, setCurrentView] = useState<'main' | 'detailed'>('main');
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [showMarkdown, setShowMarkdown] = useState<boolean>(false);
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const fgRef = useRef<any>(null);
+  
+  // Add refs and size tracking for dynamic container dimensions
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+
+  // Track container size with a resize observer
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setContainerDimensions({ width, height });
+      }
+    });
+    
+    resizeObserver.observe(containerRef.current);
+    
+    // Initial size
+    setContainerDimensions({
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight
+    });
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
   
   // Update mock content with more notes
   const mockMarkdownData: Record<string, string> = {
@@ -640,7 +678,7 @@ Q[state, action] = Q[state, action] + alpha * (
   
   useEffect(() => {
     // When view changes, update the graph
-    if (currentView === 'main') {
+    if (currentView === 'graph') {
       setGraphData(mainGraphData);
     } else if (currentView === 'detailed' && selectedNode) {
       const nodeId = selectedNode.id;
@@ -690,11 +728,12 @@ Q[state, action] = Q[state, action] + alpha * (
   
   // Handle node click
   const handleNodeClick = (node: GraphNode) => {
-    if (currentView === 'main' && detailedGraphs[node.id]) {
+    if (currentView === 'graph' && detailedGraphs[node.id]) {
+      // First-level navigation: from main graph to detailed graph
       setSelectedNode(node);
       setCurrentView('detailed');
-    } else if (node.noteId) {
-      // Show markdown content for this node
+    } else if (currentView === 'detailed' && node.noteId) {
+      // Second-level navigation: from detailed graph to markdown content
       if (mockMarkdownData[node.noteId]) {
         setMarkdownContent(mockMarkdownData[node.noteId]);
         setShowMarkdown(true);
@@ -704,13 +743,17 @@ Q[state, action] = Q[state, action] + alpha * (
   
   // Handle back button click
   const handleBackClick = () => {
-    setCurrentView('main');
+    // Reset all states when going back to main graph
+    setCurrentView('graph');
     setSelectedNode(null);
+    setShowMarkdown(false);
+    setMarkdownContent('');
     setGraphData(mainGraphData);
   };
   
   // Add close markdown handler
   const handleCloseMarkdown = () => {
+    // Just close the markdown overlay, keeping the detailed view
     setShowMarkdown(false);
     setMarkdownContent('');
   };
@@ -876,17 +919,17 @@ Q[state, action] = Q[state, action] + alpha * (
   };
   
   return (
-    <div className="relative w-full h-screen bg-white">
+    <div className="relative h-full w-full" ref={containerRef}>
       {currentView === 'detailed' && (
         <button 
           onClick={handleBackClick}
-          className="absolute top-4 left-4 z-10 bg-white px-4 py-2 rounded shadow-md border border-gray-200 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="absolute top-4 left-4 px-4 py-2 z-10 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           ← Back to Main View
         </button>
       )}
       
-      {graphData && (
+      {graphData && containerDimensions.width > 0 && containerDimensions.height > 0 && (
         <ForceGraph2D
           ref={fgRef}
           graphData={graphData}
@@ -901,18 +944,18 @@ Q[state, action] = Q[state, action] + alpha * (
           d3VelocityDecay={0.3}
           nodeRelSize={6}
           onEngineStop={() => fgRef.current?.zoomToFit(400, 150)}
-          width={window.innerWidth}
-          height={window.innerHeight}
+          width={containerDimensions.width}
+          height={containerDimensions.height}
         />
       )}
       
-      {/* Markdown popup overlay */}
+      {/* Markdown popup overlay - using fixed positioning for full screen overlay */}
       {showMarkdown && (
-        <div className="fixed inset-0 z-20 bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-20">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative">
             <button 
               onClick={handleCloseMarkdown}
-              className="absolute z-1 top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
