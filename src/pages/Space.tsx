@@ -29,7 +29,6 @@ import { getSpaceFiles, deleteFile, uploadAndProcessFile, processFile, deleteFil
 import { getSpace } from '../services/spaceService';
 import { useMobile } from '../contexts/MobileContext';
 import type { SpaceFile } from '../types/space';
-import { supabase } from '../services/supabase';
 import toast from 'react-hot-toast';
 import Sidebar from '../components/Sidebar';
 import { useLayoutState } from '../hooks/useLayoutState';
@@ -759,7 +758,7 @@ const Space = () => {
         {!showNote && !showChat && !showSandbox && showBrain && (
           <ResizablePanel defaultRatio={0.7}>
             <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
-              <Brain />
+              <Brain spaceId={spaceId} />
             </div>
             <div className="h-full overflow-auto">
               <ChatInterface sidebarOpen={sidebarOpen} simplified={true} />

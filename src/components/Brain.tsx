@@ -3,7 +3,11 @@ import HierarchicalGraph from "./brain/Graph"
 import BrainInterface from "./brain/BrainInterface"
 import { useLayoutState } from "../hooks/useLayoutState";
 
-export default function Brain() {
+interface BrainProps {
+    spaceId: string;
+}
+
+export default function Brain({ spaceId }: BrainProps) {
     // Use layout state to persist the view in URL
     const [layout, setLayout] = useLayoutState();
     
@@ -49,6 +53,7 @@ export default function Brain() {
                         currentView={currentView === 'graph' ? 'graph' : 'detailed'} 
                         setCurrentView={setCurrentView}
                         selectedNodeId={selectedNodeId}
+                        spaceId={spaceId}
                     />
                 )}
             </div>

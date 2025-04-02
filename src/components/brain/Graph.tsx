@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import MarkdownRenderer from '../common/MarkdownRenderer';
+import { useSupabaseUser } from '../../contexts/UserContext';
 
 // Define TypeScript interfaces
 interface GraphNode {
@@ -34,17 +35,23 @@ interface HierarchicalGraphProps {
   currentView: 'graph' | 'detailed';
   setCurrentView: (view: 'main' | 'graph' | 'detailed', nodeId?: string) => void;
   selectedNodeId?: string | null;
+  spaceId?: string;
 }
 
 const HierarchicalGraph: React.FC<HierarchicalGraphProps> = ({
   currentView,
   setCurrentView,
   selectedNodeId,
+  spaceId,
 }: {
   currentView: 'graph' | 'detailed';
   setCurrentView: (view: 'main' | 'graph' | 'detailed', nodeId?: string) => void;
   selectedNodeId?: string | null;
+  spaceId?: string;
 }) => {
+  // Get Supabase client from UserContext
+  const { getSupabaseClient } = useSupabaseUser();
+
   // State to track whether we're in the main view or a node's detailed view
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
@@ -55,6 +62,13 @@ const HierarchicalGraph: React.FC<HierarchicalGraphProps> = ({
   // Add refs and size tracking for dynamic container dimensions
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+
+  // New states for Supabase data
+  const [markdownDataMap, setMarkdownDataMap] = useState<Record<string, string>>({});
+  const [mainGraphData, setMainGraphData] = useState<GraphData | null>(null);
+  const [detailedGraphs, setDetailedGraphs] = useState<DetailedGraphs>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   // Track container size with a resize observer
   useEffect(() => {
@@ -80,605 +94,79 @@ const HierarchicalGraph: React.FC<HierarchicalGraphProps> = ({
     };
   }, []);
   
-  // Update mock content with more notes
-  const mockMarkdownData: Record<string, string> = {
-    "Concept1": `# Machine Learning
-    
-Machine learning is a subset of artificial intelligence that focuses on developing systems that learn from data.
-
-## Key Approaches
-- **Supervised Learning**: Training with labeled data
-- **Unsupervised Learning**: Finding patterns without labels
-- **Reinforcement Learning**: Learning through interaction with an environment
-
-## Common Applications
-1. Prediction and forecasting
-2. Image and speech recognition
-3. Natural language processing
-4. Recommendation systems
-
-\`\`\`python
-# Simple linear regression example
-import sklearn
-from sklearn.linear_model import LinearRegression
-
-model = LinearRegression()
-model.fit(X_train, y_train)
-predictions = model.predict(X_test)
-\`\`\`
-$$
-f(x) = 3x^2, \\quad g(x) = 9 + 8x
-$$
-*Note: The solution is derived using standard calculus rules and does not rely on the provided context files.*
-![Machine Learning Workflow](https://example.com/ml-workflow.png)
-    `,
-    "Concept2": `# Neural Networks
-    
-Neural networks are computing systems inspired by the biological neural networks in animal brains.
-
-## Architecture
-- **Input Layer**: Receives raw data
-- **Hidden Layers**: Process information
-- **Output Layer**: Produces final result
-
-## Types of Neural Networks
-- Feedforward Neural Networks
-- Convolutional Neural Networks (CNNs)
-- Recurrent Neural Networks (RNNs)
-- Transformers
-
-\`\`\`javascript
-// Simple neural network in TensorFlow.js
-const model = tf.sequential();
-model.add(tf.layers.dense({units: 100, activation: 'relu', inputShape: [10]}));
-model.add(tf.layers.dense({units: 1, activation: 'sigmoid'}));
-model.compile({loss: 'binaryCrossentropy', optimizer: 'adam'});
-\`\`\`
-
-### YouTube: Understanding Neural Networks
-YouTube: https://www.youtube.com/watch?v=aircAruvnKk
-    `,
-    "Concept3": `# Computer Vision
-    
-Computer vision is an interdisciplinary field that enables computers to gain high-level understanding from digital images or videos.
-
-## Main Tasks
-- **Image Classification**: Categorizing images
-- **Object Detection**: Identifying and locating objects
-- **Segmentation**: Pixel-level classification
-- **Image Generation**: Creating new images
-
-## Popular Libraries and Frameworks
-- OpenCV
-- TensorFlow/Keras
-- PyTorch
-- YOLO
-
-\`\`\`python
-# Using OpenCV to detect faces
-import cv2
-
-face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-img = cv2.imread('image.jpg')
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-
-for (x, y, w, h) in faces:
-    cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
-\`\`\`
-    `,
-    "Concept4": `# Natural Language Processing
-    
-NLP is a field that focuses on the interaction between computers and human language.
-
-## Core Components
-- **Tokenization**: Breaking text into tokens
-- **Part-of-speech Tagging**: Identifying word types
-- **Named Entity Recognition**: Identifying entities
-- **Sentiment Analysis**: Determining emotion/opinion
-
-## Modern Approaches
-- Word Embeddings (Word2Vec, GloVe)
-- Transformers (BERT, GPT)
-- Transfer Learning
-- Few-shot and Zero-shot Learning
-
-\`\`\`python
-# Simple sentiment analysis with NLTK
-import nltk
-from nltk.sentiment import SentimentIntensityAnalyzer
-
-sia = SentimentIntensityAnalyzer()
-text = "I love this new natural language processing algorithm!"
-print(sia.polarity_scores(text))
-\`\`\`
-
-<details>
-<summary>Advanced NLP Resources</summary>
-- Stanford NLP Group: https://nlp.stanford.edu/
-- Hugging Face: https://huggingface.co/
-- spaCy: https://spacy.io/
-- NLTK: https://www.nltk.org/
-</details>
-    `,
-    "Concept5": `# Reinforcement Learning
-    
-Reinforcement learning is training algorithms to make decisions by rewarding desired behaviors and punishing undesired ones.
-
-## Key Concepts
-- **Agent**: The learner or decision-maker
-- **Environment**: What the agent interacts with
-- **Actions**: What the agent can do
-- **Rewards**: Feedback from the environment
-
-## Popular Algorithms
-- Q-Learning
-- Deep Q Networks (DQN)
-- Policy Gradients
-- Proximal Policy Optimization (PPO)
-
-\`\`\`python
-# Simple Q-learning implementation
-import numpy as np
-
-# Initialize Q-table
-Q = np.zeros([states, actions])
-alpha = 0.1  # Learning rate
-gamma = 0.9  # Discount factor
-
-# Q-learning update
-Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action])
-\`\`\`
-
-## Applications
-- Games (AlphaGo, OpenAI Five)
-- Robotics
-- Autonomous vehicles
-- Resource management
-    `,
-    "Note1": `# Supervised Learning
-
-Supervised learning uses labeled training data to learn the mapping function from input variables to output variables.
-
-## Examples
-- Linear Regression
-- Logistic Regression
-- Support Vector Machines
-- Decision Trees
-- Neural Networks
-
-## When to Use
-- When you have labeled data
-- For classification or regression tasks
-- When you want clear predictions
-    `,
-    "Note2": `# Unsupervised Learning
-
-Unsupervised learning finds patterns or intrinsic structures in input data without labeled responses.
-
-## Common Techniques
-- Clustering (K-means, Hierarchical)
-- Dimensionality Reduction (PCA, t-SNE)
-- Association Rule Learning
-- Anomaly Detection
-
-## Applications
-- Customer segmentation
-- Feature learning
-- Structure discovery
-- Density estimation
-    `,
-    "Note3": `# Regression Analysis
-
-Regression is used to predict continuous values, such as price, probability, or temperature.
-
-## Types of Regression
-- Linear Regression
-- Polynomial Regression
-- Ridge Regression
-- Lasso Regression
-- Elastic Net
-
-## Model Evaluation
-- Mean Squared Error (MSE)
-- Root Mean Squared Error (RMSE)
-- R-squared
-- Adjusted R-squared
-    `,
-    "Note4": `# Classification
-
-Classification is the process of categorizing data points into predefined classes.
-
-## Popular Classifiers
-- Logistic Regression
-- Naive Bayes
-- K-Nearest Neighbors
-- Support Vector Machines
-- Random Forests
-
-## Evaluation Metrics
-- Accuracy
-- Precision
-- Recall
-- F1 Score
-- ROC Curve and AUC
-    `,
-    "Concept2-Note1": `# Perceptron
-    
-The perceptron is the simplest type of artificial neural network unit. It models a single neuron that applies a step function to the weighted sum of its inputs.
-
-## History
-- Introduced by Frank Rosenblatt in 1957
-- Originally implemented in hardware as the Mark I Perceptron
-
-## Key Properties
-- Binary classification
-- Linear decision boundary
-- Simple learning algorithm
-
-\`\`\`python
-# Simple perceptron implementation
-class Perceptron:
-    def __init__(self, learning_rate=0.01, n_iterations=1000):
-        self.learning_rate = learning_rate
-        self.n_iterations = n_iterations
-        self.weights = None
-        self.bias = None
-        
-    def fit(self, X, y):
-        n_samples, n_features = X.shape
-        self.weights = np.zeros(n_features)
-        self.bias = 0
-        
-        for _ in range(self.n_iterations):
-            for idx, x_i in enumerate(X):
-                linear_output = np.dot(x_i, self.weights) + self.bias
-                y_predicted = 1 if linear_output >= 0 else 0
-                
-                update = self.learning_rate * (y[idx] - y_predicted)
-                self.weights += update * x_i
-                self.bias += update
-\`\`\`
-    `,
-    "Concept2-Note2": `# Hidden Layers
-    
-Hidden layers in neural networks are layers of neurons between the input and output layers, enabling the network to learn complex, non-linear patterns.
-
-## Importance
-- Enable representation of non-linear decision boundaries
-- Allow hierarchical feature learning
-- Key to deep learning capabilities
-
-## Activation Functions
-- ReLU (Rectified Linear Unit)
-- Sigmoid
-- Tanh
-- Leaky ReLU
-- Swish/SiLU
-    `,
-    "Concept2-Note3": `# Backpropagation
-    
-Backpropagation is an algorithm for training neural networks by calculating gradients and updating weights to minimize loss.
-
-## Process
-1. Forward pass: calculate predictions
-2. Compute loss
-3. Backward pass: calculate gradients
-4. Update weights
-
-## Challenges
-- Vanishing gradients
-- Exploding gradients
-- Local minima
-- Computational complexity
-    `,
-    "Concept3-Note1": `# Image Classification
-    
-Image classification is the task of assigning a label or category to an entire image.
-
-## Approaches
-- Traditional: SIFT, HOG features with SVMs/Random Forests
-- Modern: Convolutional Neural Networks (CNNs)
-- State-of-the-art: Vision Transformers (ViT)
-
-## Popular Models
-- ResNet
-- EfficientNet
-- Vision Transformer (ViT)
-- ConvNeXT
-
-\`\`\`python
-# Using a pre-trained CNN for image classification
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.resnet50 import preprocess_input, decode_predictions
-import numpy as np
-
-model = ResNet50(weights='imagenet')
-
-img_path = 'elephant.jpg'
-img = image.load_img(img_path, target_size=(224, 224))
-x = image.img_to_array(img)
-x = np.expand_dims(x, axis=0)
-x = preprocess_input(x)
-
-preds = model.predict(x)
-print('Predicted:', decode_predictions(preds, top=3)[0])
-\`\`\`
-    `,
-    "Concept3-Note2": `# Object Detection
-    
-Object detection involves both identifying and localizing objects within an image.
-
-## Key Algorithms
-- R-CNN family: R-CNN, Fast R-CNN, Faster R-CNN
-- Single-shot detectors: SSD, YOLO
-- Anchor-free approaches: CenterNet, FCOS
-
-## Performance Metrics
-- Precision & Recall
-- Average Precision (AP)
-- mAP (mean Average Precision)
-- Intersection over Union (IoU)
-
-![Object Detection Example](https://example.com/object-detection.jpg)
-    `,
-    "Concept3-Note3": `# Convolutional Neural Networks
-    
-CNNs are specialized neural networks designed to process grid-like data such as images.
-
-## Key Components
-- Convolutional layers: Apply filters to detect features
-- Pooling layers: Reduce dimensionality
-- Fully connected layers: Final classification
-
-## CNN Architecture Evolution
-- LeNet (1998)
-- AlexNet (2012)
-- VGG (2014)
-- ResNet (2015)
-- EfficientNet (2019)
-    `,
-    "Concept4-Note1": `# Tokenization
-    
-Tokenization is the process of breaking text into smaller units such as words, subwords, or characters.
-
-## Types of Tokenization
-- Word tokenization
-- Subword tokenization (BPE, WordPiece, SentencePiece)
-- Character tokenization
-
-## Tools
-- NLTK
-- spaCy
-- Hugging Face Tokenizers
-
-\`\`\`python
-# Word tokenization with NLTK
-import nltk
-text = "Tokenization is the first step in many NLP tasks."
-tokens = nltk.word_tokenize(text)
-print(tokens)
-# ['Tokenization', 'is', 'the', 'first', 'step', 'in', 'many', 'NLP', 'tasks', '.']
-\`\`\`
-    `,
-    "Concept4-Note2": `# Word Embeddings
-    
-Word embeddings are dense vector representations of words that capture semantic meaning.
-
-## Popular Embedding Methods
-- Word2Vec
-- GloVe
-- FastText
-- Contextual embeddings: ELMo, BERT
-
-## Properties
-- Similar words have similar vectors
-- Support semantic operations (e.g., king - man + woman ≈ queen)
-- Can transfer to downstream tasks
-
-\`\`\`python
-# Loading GloVe embeddings
-import numpy as np
-
-embeddings_dict = {}
-with open("glove.6B.100d.txt", "r", encoding="utf-8") as f:
-    for line in f:
-        values = line.split()
-        word = values[0]
-        vector = np.asarray(values[1:], "float32")
-        embeddings_dict[word] = vector
-\`\`\`
-    `,
-    "Concept4-Note3": `# Transformers
-    
-Transformers are neural network architectures that use self-attention mechanisms to process sequential data.
-
-## Key Innovations
-- Attention mechanisms
-- Parallelizable training (vs. sequential RNNs)
-- Positional encoding
-- Multi-head attention
-
-## Popular Models
-- BERT
-- GPT family
-- T5
-- RoBERTa
-- XLNet
-
-## Applications
-- Machine translation
-- Text summarization
-- Question answering
-- Text generation
-    `,
-    "Concept5-Note1": `# Agents in Reinforcement Learning
-    
-In reinforcement learning, an agent is the entity that takes actions in an environment to maximize reward.
-
-## Agent Components
-- Policy: Strategy for selecting actions
-- Value function: Estimates expected rewards
-- Model: Agent's representation of the environment (optional)
-
-## Agent Types
-- Value-based
-- Policy-based
-- Actor-critic
-- Model-based
-
-\`\`\`python
-# Simple RL agent with OpenAI Gym
-import gym
-import numpy as np
-
-env = gym.make("CartPole-v1")
-n_states = 10  # Discretized state space
-n_actions = env.action_space.n
-Q = np.zeros((n_states, n_actions))
-
-# Training loop would follow...
-\`\`\`
-    `,
-    "Concept5-Note2": `# Rewards in Reinforcement Learning
-    
-Rewards are signals from the environment that the agent aims to maximize over time.
-
-## Reward Design Challenges
-- Sparse rewards
-- Reward shaping
-- Delayed rewards
-- Exploration vs. exploitation
-
-## Reward Functions
-- Binary rewards (success/failure)
-- Continuous rewards (distance-based)
-- Hierarchical rewards
-- Intrinsic motivation
-    `,
-    "Concept5-Note3": `# Q-Learning
-    
-Q-learning is a model-free reinforcement learning algorithm that learns a value function for each state-action pair.
-
-## Algorithm
-1. Initialize Q-values
-2. For each step:
-   - Select action (e.g., ε-greedy)
-   - Take action, observe reward and next state
-   - Update Q-value with Bellman equation
-   - Repeat
-
-## Variants
-- Deep Q-Networks (DQN)
-- Double DQN
-- Dueling DQN
-- Rainbow DQN
-
-\`\`\`python
-# Q-learning update equation
-Q[state, action] = Q[state, action] + alpha * (
-    reward + gamma * np.max(Q[next_state, :]) - Q[state, action]
-)
-\`\`\`
-    `
-  };
-  
-  // Use useMemo for static graph data to prevent unnecessary re-renders
-  const mainGraphData = useMemo<GraphData>(() => ({
-    nodes: [
-      {id: "Concept1", group: 1, label: "Machine Learning", size: 15, color: "#4361EE", noteId: "Concept1"},
-      {id: "Concept2", group: 2, label: "Neural Networks", size: 12, color: "#3A0CA3", noteId: "Concept2"},
-      {id: "Concept3", group: 3, label: "Computer Vision", size: 14, color: "#7209B7", noteId: "Concept3"},
-      {id: "Concept4", group: 4, label: "NLP", size: 13, color: "#F72585", noteId: "Concept4"},
-      {id: "Concept5", group: 5, label: "Reinforcement Learning", size: 11, color: "#4CC9F0", noteId: "Concept5"}
-    ],
-    links: [
-      {source: "Concept1", target: "Concept2"},
-      {source: "Concept1", target: "Concept3"},
-      {source: "Concept1", target: "Concept4"},
-      {source: "Concept1", target: "Concept5"},
-      {source: "Concept2", target: "Concept3"},
-      {source: "Concept4", target: "Concept5"}
-    ]
-  }), []);
-  
-  // Use useMemo for detailed graphs to prevent re-renders
-  const detailedGraphs = useMemo<DetailedGraphs>(() => ({
-    "Concept1": {
-      nodes: [
-        {id: "Concept1", group: 1, label: "Machine Learning", size: 20, type: "circle", noteId: "Concept1"},
-        {id: "Note1", group: 1, label: "Supervised Learning uses labeled data", type: "text", noteId: "Note1"},
-        {id: "Note2", group: 1, label: "Unsupervised Learning finds patterns without labels", type: "text", noteId: "Note2"},
-        {id: "Note3", group: 1, label: "Regression predicts continuous values", type: "text", noteId: "Note3"},
-        {id: "Note4", group: 1, label: "Classification assigns categories", type: "text", noteId: "Note4"}
-      ],
-      links: [
-        {source: "Concept1", target: "Note1"},
-        {source: "Concept1", target: "Note2"},
-        {source: "Concept1", target: "Note3"},
-        {source: "Concept1", target: "Note4"}
-      ]
-    },
-    "Concept2": {
-      nodes: [
-        {id: "Concept2", group: 2, label: "Neural Networks", size: 20, type: "circle", noteId: "Concept2"},
-        {id: "Note1", group: 2, label: "Perceptron is the simplest neural unit", type: "text", noteId: "Concept2-Note1"},
-        {id: "Note2", group: 2, label: "Hidden layers enable complex pattern recognition", type: "text", noteId: "Concept2-Note2"},
-        {id: "Note3", group: 2, label: "Backpropagation adjusts weights during training", type: "text", noteId: "Concept2-Note3"}
-      ],
-      links: [
-        {source: "Concept2", target: "Note1"},
-        {source: "Concept2", target: "Note2"},
-        {source: "Concept2", target: "Note3"}
-      ]
-    },
-    "Concept3": {
-      nodes: [
-        {id: "Concept3", group: 3, label: "Computer Vision", size: 20, type: "circle", noteId: "Concept3"},
-        {id: "Note1", group: 3, label: "Image classification identifies objects", type: "text", noteId: "Concept3-Note1"},
-        {id: "Note2", group: 3, label: "Object detection locates items in images", type: "text", noteId: "Concept3-Note2"},
-        {id: "Note3", group: 3, label: "CNNs use filters to detect features", type: "text", noteId: "Concept3-Note3"}
-      ],
-      links: [
-        {source: "Concept3", target: "Note1"},
-        {source: "Concept3", target: "Note2"},
-        {source: "Concept3", target: "Note3"}
-      ]
-    },
-    "Concept4": {
-      nodes: [
-        {id: "Concept4", group: 4, label: "NLP", size: 20, type: "circle", noteId: "Concept4"},
-        {id: "Note1", group: 4, label: "Tokenization breaks text into units", type: "text", noteId: "Concept4-Note1"},
-        {id: "Note2", group: 4, label: "Word embeddings represent semantic meaning", type: "text", noteId: "Concept4-Note2"},
-        {id: "Note3", group: 4, label: "Transformers power modern language models", type: "text", noteId: "Concept4-Note3"}
-      ],
-      links: [
-        {source: "Concept4", target: "Note1"},
-        {source: "Concept4", target: "Note2"},
-        {source: "Concept4", target: "Note3"}
-      ]
-    },
-    "Concept5": {
-      nodes: [
-        {id: "Concept5", group: 5, label: "Reinforcement Learning", size: 20, type: "circle", noteId: "Concept5"},
-        {id: "Note1", group: 5, label: "Agents take actions in environments", type: "text", noteId: "Concept5-Note1"},
-        {id: "Note2", group: 5, label: "Rewards guide policy optimization", type: "text", noteId: "Concept5-Note2"},
-        {id: "Note3", group: 5, label: "Q-learning estimates action values", type: "text", noteId: "Concept5-Note3"}
-      ],
-      links: [
-        {source: "Concept5", target: "Note1"},
-        {source: "Concept5", target: "Note2"},
-        {source: "Concept5", target: "Note3"}
-      ]
+  // Fetch graph data from Supabase
+  const fetchGraphData = async () => {
+    if (!spaceId) return;
+
+    try {
+      setIsLoading(true);
+      
+      const supabaseClient = await getSupabaseClient();
+      if (!supabaseClient) {
+        throw new Error('Failed to get Supabase client');
+      }
+
+      // Fetch graph structure from graphs table
+      const { data: graphsData, error: graphsError } = await supabaseClient
+        .from('graphs')
+        .select('data')
+        .eq('space_id', spaceId)
+        .single();
+
+      if (graphsError) {
+        throw new Error(`Error fetching graph data: ${graphsError.message}`);
+      }
+
+      if (graphsData && graphsData.data) {
+        // Extract mainGraph and detailedGraphs from the data
+        const { mainGraph, detailedGraphs: detailedGraphsData } = graphsData.data;
+        setMainGraphData(mainGraph as GraphData);
+        setDetailedGraphs(detailedGraphsData as DetailedGraphs);
+      }
+
+      // Fetch all markdown content from space_research table
+      const { data: contentData, error: contentError } = await supabaseClient
+        .from('space_research')
+        .select('content, metadata')
+        .eq('space_id', spaceId);
+      
+      if (contentError) {
+        throw new Error(`Error fetching content data: ${contentError.message}`);
+      }
+
+      // Create mapping from note ID to content
+      if (contentData) {
+        const contentMap: Record<string, string> = {};
+        contentData.forEach((item: { metadata: any; content: string }) => {
+          if (item.metadata && item.metadata.id && item.content) {
+            contentMap[item.metadata.id] = item.content;
+          }
+        });
+        setMarkdownDataMap(contentMap);
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error('Error loading graph data:', err);
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
     }
-  }), []);
+  };
+
+  // Fetch data when spaceId changes or component mounts
+  useEffect(() => {
+    fetchGraphData();
+  }, [spaceId]);
   
   // Initialize graph on first render
   const initializedRef = useRef(false);
   
   // Initial setup - only runs once
   useEffect(() => {
+    // Only proceed if we have loaded the data from Supabase
+    if (isLoading || !mainGraphData) return;
+    
     // Set initial graph data based on current view
     if (currentView === 'detailed' && selectedNode && detailedGraphs[selectedNode.id]) {
       // If we're already in detailed view (e.g., after a reload), show detailed graph
@@ -691,13 +179,12 @@ Q[state, action] = Q[state, action] + alpha * (
     // Mark as initialized
     initializedRef.current = true;
     
-    // This effect only runs once on mount, but we include dependencies to satisfy the linter
-  }, [currentView, selectedNode, detailedGraphs, mainGraphData]);
+  }, [currentView, selectedNode, detailedGraphs, mainGraphData, isLoading]);
   
   // Handle view changes - only runs after initialization
   useEffect(() => {
     // Skip on first render since initialization handles that
-    if (!initializedRef.current) return;
+    if (!initializedRef.current || !mainGraphData) return;
     
     // When view changes, update the graph
     if (currentView === 'graph') {
@@ -715,6 +202,9 @@ Q[state, action] = Q[state, action] + alpha * (
   
   // Find node by ID on first render if selectedNodeId is provided
   useEffect(() => {
+    // Only proceed if we have loaded the data from Supabase
+    if (isLoading || !mainGraphData) return;
+    
     // If we have a selectedNodeId but no selectedNode yet, find it from the main graph
     if (selectedNodeId && !selectedNode && mainGraphData) {
       const node = mainGraphData.nodes.find(n => n.id === selectedNodeId);
@@ -722,36 +212,34 @@ Q[state, action] = Q[state, action] + alpha * (
         setSelectedNode(node);
       }
     }
-  }, [selectedNodeId, selectedNode, mainGraphData]);
+  }, [selectedNodeId, selectedNode, mainGraphData, isLoading]);
   
   useEffect(() => {
     // When the graph data changes or is initially set
-    if (fgRef.current) {
+    if (fgRef.current && graphData) {
       // Customize the forces for better spacing with larger nodes
       fgRef.current.d3Force('charge').strength(-3000); // Stronger repulsion between nodes
       
       // Dynamically adjust link distance based on connected node label lengths
-      if (graphData) {
-        graphData.links.forEach((link) => {
-          const sourceNode = typeof link.source === 'string' 
-            ? graphData.nodes.find(n => n.id === link.source) 
-            : link.source as GraphNode;
+      graphData.links.forEach((link) => {
+        const sourceNode = typeof link.source === 'string' 
+          ? graphData.nodes.find(n => n.id === link.source) 
+          : link.source as GraphNode;
+        
+        const targetNode = typeof link.target === 'string'
+          ? graphData.nodes.find(n => n.id === link.target)
+          : link.target as GraphNode;
           
-          const targetNode = typeof link.target === 'string'
-            ? graphData.nodes.find(n => n.id === link.target)
-            : link.target as GraphNode;
-            
-          if (sourceNode && targetNode) {
-            const avgLabelLength = (sourceNode.label.length + targetNode.label.length) / 2;
-            // Base distance + additional distance based on label length
-            const distance = 150 + Math.min(avgLabelLength * 5, 150);
-            
-            // Set custom distance for this link
-            // Note: This requires modifying the link object
-            (link as any).distance = distance;
-          }
-        });
-      }
+        if (sourceNode && targetNode) {
+          const avgLabelLength = (sourceNode.label.length + targetNode.label.length) / 2;
+          // Base distance + additional distance based on label length
+          const distance = 150 + Math.min(avgLabelLength * 5, 150);
+          
+          // Set custom distance for this link
+          // Note: This requires modifying the link object
+          (link as any).distance = distance;
+        }
+      });
       
       // Override the default link force with a custom one that respects individual link distances
       fgRef.current.d3Force('link').distance((link: any) => link.distance || 240);
@@ -770,8 +258,8 @@ Q[state, action] = Q[state, action] + alpha * (
       setCurrentView('detailed', node.id);
     } else if (currentView === 'detailed' && node.noteId) {
       // Second-level navigation: from detailed graph to markdown content
-      if (mockMarkdownData[node.noteId]) {
-        setMarkdownContent(mockMarkdownData[node.noteId]);
+      if (markdownDataMap[node.noteId]) {
+        setMarkdownContent(markdownDataMap[node.noteId]);
         setShowMarkdown(true);
       }
     }
@@ -953,6 +441,33 @@ Q[state, action] = Q[state, action] + alpha * (
       }
     }
   };
+  
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="relative h-full w-full flex items-center justify-center" ref={containerRef}>
+        <div className="text-gray-600">Loading graph data...</div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="relative h-full w-full flex items-center justify-center" ref={containerRef}>
+        <div className="text-red-500">
+          <p>Error loading graph data:</p>
+          <p>{error.message}</p>
+          <button
+            onClick={fetchGraphData}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="relative h-full w-full" ref={containerRef}>
