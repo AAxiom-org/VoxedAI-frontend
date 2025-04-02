@@ -757,14 +757,9 @@ const Space = () => {
             </ResizablePanel>
         )}
         {!showNote && !showChat && !showSandbox && showBrain && (
-            <ResizablePanel defaultRatio={0.7}>
-                <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
-                    <Brain />
-                </div>
-                <div className="h-full overflow-auto">
-                  <ChatInterface sidebarOpen={sidebarOpen} simplified={true} />
-                </div>
-            </ResizablePanel>
+          <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
+            <Brain />
+          </div>
         )}
       </div>
 

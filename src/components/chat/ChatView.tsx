@@ -12,6 +12,8 @@ import 'katex/dist/katex.min.css';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
+// TODO: migrate to use MarkdownRenderer component
+
 // Define types for agent events
 interface AgentEvent {
   type: string;
