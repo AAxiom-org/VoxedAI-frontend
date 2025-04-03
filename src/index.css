@@ -635,3 +635,21 @@
 button {
   cursor: pointer;
 }
+
+.bn-block-content {
+  width: 100%;
+  display: block;
+}
+
+.bn-inline-content {
+  width: 100%;
+  display: block;
+}
+
+.bn-block {
+  width: 100%;
+}
+
+.bn-block-outer {
+  width: 100%;
+}

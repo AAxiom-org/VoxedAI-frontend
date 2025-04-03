@@ -12,7 +12,7 @@ export default function Brain({ spaceId }: BrainProps) {
     const [layout, setLayout] = useLayoutState();
     
     // Get current brain view from layout with default fallback to 'graph'
-    const currentView = layout.brainView || 'graph';
+    const currentView = layout.brainView || 'main'; // Default to 'main' instead of 'graph'
     const selectedNodeId = layout.selectedNodeId;
     
     // Update brain view in layout state
@@ -31,7 +31,7 @@ export default function Brain({ spaceId }: BrainProps) {
     };
 
     return (
-        <div className="h-full w-full flex items-center justify-center relative overflow-hidden">
+        <div className="h-full w-full relative overflow-hidden">
             {/* Only show back button here if we're in graph view, not in detailed view */}
             {currentView === 'graph' && (
                 <button 
@@ -42,11 +42,12 @@ export default function Brain({ spaceId }: BrainProps) {
                 </button>
             )}
             
-            <div className="h-full w-full flex justify-center items-center">
+            <div className="h-full w-full">
                 {currentView === 'main' ? (
                     <BrainInterface 
                         currentView={currentView} 
                         setCurrentView={setCurrentView}
+                        spaceId={spaceId}
                     />
                 ) : (
                     <HierarchicalGraph 
