@@ -636,20 +636,24 @@ button {
   cursor: pointer;
 }
 
-.bn-block-content {
-  width: 100%;
-  display: block;
-}
-
+/* Make all block containers take full width */
+.bn-block-group,
+.bn-block-outer,
+.bn-block,
+.bn-block-content,
 .bn-inline-content {
   width: 100%;
   display: block;
 }
 
-.bn-block {
+/* Ensure checklist items display properly */
+.bn-block-content[data-content-type="checkListItem"] > div {
+  display: flex;
   width: 100%;
 }
 
-.bn-block-outer {
+/* Make sure headings extend full width */
+.bn-block-content[data-content-type="heading"] h1,
+.bn-block-content[data-content-type="heading"] h3 {
   width: 100%;
 }

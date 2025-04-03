@@ -240,16 +240,6 @@ const BrainInterface = ({
             if (storageError) {
                 console.error('Error saving brain note to storage:', storageError);
             }
-            
-            // Update the brainNote object after successful save
-            // but keep the reference to avoid re-renders
-            setBrainNote(prevNote => {
-                if (!prevNote) return null;
-                return {
-                    ...prevNote,
-                    note_content: content
-                };
-            });
         } catch (error) {
             console.error('Error in handleSaveBrainNote:', error);
         } finally {
@@ -393,6 +383,7 @@ const BrainInterface = ({
                                             noteContent={brainNoteContent}
                                             onSave={handleSaveBrainNote}
                                             noteName="Second Brain"
+                                            isChild={true}
                                         />
                                     )}
                                 </div>

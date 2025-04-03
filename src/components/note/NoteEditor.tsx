@@ -14,6 +14,7 @@ interface BlockNoteEditorProps {
   noteContent: string;
   onSave: (content: string) => void;
   noteName: string;
+  isChild?: boolean; // Optional flag to determine state management approach
 }
 
 // Error boundary component to catch errors in BlockNoteView
@@ -100,8 +101,9 @@ const safelyParseContent = (jsonString: string) => {
 };
 
 // Import the BlockNote component that will be displayed when a note is clicked
-const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName }: BlockNoteEditorProps) => {
+const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChild = false }: BlockNoteEditorProps) => {
   const { theme } = useTheme();
+  const [initialContentSet, setInitialContentSet] = useState<boolean>(false);
   const [content, setContent] = useState<string>(noteContent);
   const [isLoading, setIsLoading] = useState<boolean>(!noteContent);
   const [error, setError] = useState<string | null>(null);
@@ -279,13 +281,23 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName }: Blo
     setViewMode(prev => prev === 'diff' ? 'side-by-side' : 'diff');
   }, []);
   
-  // When noteContent changes (after loading), update the editor content
+  // Update content state on initial render or based on isChild flag
   useEffect(() => {
-    if (noteContent) {
-      setContent(noteContent);
-      setIsLoading(false);
+    if (isChild) {
+      // Child mode: only use noteContent on initial mount
+      if (noteContent && !initialContentSet) {
+        setContent(noteContent);
+        setIsLoading(false);
+        setInitialContentSet(true);
+      }
+    } else {
+      // Standard mode: always update from parent
+      if (noteContent) {
+        setContent(noteContent);
+        setIsLoading(false);
+      }
     }
-  }, [noteContent]);
+  }, [noteContent, initialContentSet, isChild]);
   
   // Create a valid empty document structure
   const createEmptyDocument = useCallback(() => {
@@ -308,15 +320,15 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName }: Blo
     }
   }, []);
   
-  // Parse the content safely
+  // Parse the content safely - Use initialContentSet to ensure we only use noteContent on initial mount when in child mode
   const initialContent = React.useMemo(() => {
-    if (!noteContent || noteContent.trim() === '') {
+    if (!content || content.trim() === '') {
       return createEmptyDocument();
     }
     
-    const parsedContent = safelyParseContent(noteContent);
+    const parsedContent = safelyParseContent(content);
     return parsedContent || createEmptyDocument();
-  }, [noteContent, createEmptyDocument]);
+  }, [content, createEmptyDocument]);
   
   // Create a memoized BlockNoteEditor
   const editor = React.useMemo(() => {
@@ -355,7 +367,9 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName }: Blo
         return null;
       }
     }
-  }, [initialContent]);
+  // Only create the editor once with the initial content when in child mode
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isChild ? null : initialContent]);
   
   // Safe function to get editor document
   const getEditorDocument = useCallback(() => {
@@ -370,29 +384,39 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName }: Blo
     }
   }, []);
   
-  // Safe onChange handler
+  // Safe onChange handler - Modified to update internal state first when in child mode
   const handleEditorChange = useCallback(async () => {
     try {
       setIsLoading(true);
       const document = getEditorDocument();
-      // Properly await the markdown conversion
-      const markdown = await editorRef.current?.blocksToMarkdownLossy();
-      if (markdown) {
-        const supabaseClient = await getSupabaseClient();
-        const { data, error } = await supabaseClient
-          .from('space_files')
-          .update({ note_content: markdown })
-          .eq('id', noteId)
-          .select();
-        
-        if (error) {
-          console.error("Error updating note content:", error);
-          throw error;
-        }
-      }
+      
       if (document) {
         const content = JSON.stringify(document);
+        
+        // In child mode, update internal state first
+        if (isChild) {
+          setContent(content);
+        }
+        
+        // Then persist changes
         onSave(content);
+        
+        // Properly await the markdown conversion for database
+        const markdown = await editorRef.current?.blocksToMarkdownLossy();
+        if (markdown) {
+          const supabaseClient = await getSupabaseClient();
+          const { data, error } = await supabaseClient
+            .from('space_files')
+            .update({ note_content: markdown })
+            .eq('id', noteId)
+            .select();
+          
+          if (error) {
+            console.error("Error updating note content:", error);
+            throw error;
+          }
+        }
+        
         setTimeout(() => setIsLoading(false), 500);
       }
     } catch (error) {
@@ -400,7 +424,7 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName }: Blo
       setError("Failed to save changes");
       setIsLoading(false);
     }
-  }, [onSave, getEditorDocument]);
+  }, [onSave, getEditorDocument, noteId, isChild]);
   
   // Handle editor errors
   const handleEditorError = useCallback(
