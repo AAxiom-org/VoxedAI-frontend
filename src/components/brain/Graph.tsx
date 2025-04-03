@@ -57,6 +57,8 @@ const HierarchicalGraph = ({
   // Add refs and size tracking for dynamic container dimensions
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  // Track if this is a full screen view or a child component
+  const isFullScreen = currentView === 'graph';
 
   // New states for Supabase data
   const [markdownDataMap, setMarkdownDataMap] = useState<Record<string, string>>({});
@@ -209,6 +211,7 @@ const HierarchicalGraph = ({
     }
   }, [selectedNodeId, selectedNode, mainGraphData, isLoading]);
   
+  // Effect to handle graph data changes and apply zoom
   useEffect(() => {
     // When the graph data changes or is initially set
     if (fgRef.current && graphData) {
@@ -244,6 +247,21 @@ const HierarchicalGraph = ({
       fgRef.current.d3ReheatSimulation();
     }
   }, [graphData]);
+  
+  // Apply zoom whenever container dimensions change or the isFullScreen state changes
+  useEffect(() => {
+    // Only proceed if we have a valid graph reference and dimensions
+    if (fgRef.current && containerDimensions.width > 0 && containerDimensions.height > 0 && graphData) {
+      // Allow the graph a moment to stabilize before zooming
+      setTimeout(() => {
+        if (fgRef.current) {
+          // Calculate appropriate padding based on whether this is fullscreen or a preview
+          const padding = isFullScreen ? 150 : 40;
+          fgRef.current.zoomToFit(400, padding);
+        }
+      }, 500);
+    }
+  }, [containerDimensions, isFullScreen, graphData]);
   
   // Handle node click
   const handleNodeClick = (node: GraphNode) => {
@@ -489,7 +507,6 @@ const HierarchicalGraph = ({
           d3AlphaDecay={0.01}
           d3VelocityDecay={0.3}
           nodeRelSize={6}
-          onEngineStop={() => fgRef.current?.zoomToFit(400, 150)}
           width={containerDimensions.width}
           height={containerDimensions.height}
         />

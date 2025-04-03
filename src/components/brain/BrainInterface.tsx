@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseUser } from '../../contexts/UserContext';
 import HierarchicalGraph from './Graph';
 import BlockNoteEditor from '../note/NoteEditor';
@@ -61,6 +61,7 @@ const BrainInterface = ({
     const [recentEntries, setRecentEntries] = useState<ResearchEntry[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
+    const [isCreatingBrainNote, setIsCreatingBrainNote] = useState<boolean>(false);
     const [layout, setLayout] = useLayoutState();
     const { getSupabaseClient, supabaseUserId } = useSupabaseUser();
     
@@ -68,6 +69,12 @@ const BrainInterface = ({
     useEffect(() => {
         const fetchBrainData = async () => {
             if (!spaceId) return;
+            
+            // Prevent duplicate fetches
+            if (isCreatingBrainNote) {
+                console.log('Already creating a brain note, skipping fetch');
+                return;
+            }
             
             setIsLoading(true);
             
@@ -85,6 +92,7 @@ const BrainInterface = ({
                 if (brainNoteError && brainNoteError.code !== 'PGRST116') {
                     console.error('Error fetching brain note:', brainNoteError);
                 } else if (brainNoteData) {
+                    // Brain note exists, just set the state
                     setBrainNote(brainNoteData);
                     setBrainNoteId(brainNoteData.id);
 
@@ -98,7 +106,7 @@ const BrainInterface = ({
                         setBrainNoteContent(noteContent || '');
                     }
                 } else {
-                    // Create a new brain note if none exists
+                    // Create a new brain note only if none exists
                     await createNewBrainNote(supabaseClient, spaceId);
                 }
                 
@@ -123,21 +131,30 @@ const BrainInterface = ({
         };
         
         fetchBrainData();
-    }, [spaceId, getSupabaseClient, supabaseUserId]);
+    }, [spaceId, getSupabaseClient, supabaseUserId, isCreatingBrainNote]);
     
-    // Create a new brain note
+    // Create a new brain note - completely rewritten to match index.tsx pattern
     const createNewBrainNote = async (supabaseClient: any, spaceId: string) => {
+        if (!spaceId || !supabaseUserId) {
+            console.error('Missing required information to create brain note');
+            return;
+        }
+        
+        // Set flag to prevent duplicate creation attempts
+        setIsCreatingBrainNote(true);
+        
         try {
+            // Fixed metadata for brain notes
             const metadata = {
                 tags: ["plan", "research"],
                 emoji: "🧠",
                 title: "Second Brain"
             };
             
-            if (!supabaseUserId) {
-                console.error('No user ID available for creating brain note');
-                return;
-            }
+            // Create a timestamp for the file name
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:.]/g, "-");
+            const newNoteName = `BrainNote_${timestamp}`;
+            const fileName = `${newNoteName}.json`;
             
             // Create initial blank content for the brain note (JSON format for BlockNote)
             const initialContent = JSON.stringify({
@@ -155,17 +172,18 @@ const BrainInterface = ({
                 ]
             });
             
+            // Create a blob from the content
             const contentBlob = new Blob([initialContent], { type: "application/json" });
             
-            // Create a file path for storage with .json extension
-            const filePath = `${supabaseUserId}/${spaceId}/notes/second-brain.json`;
+            // Create file path for storage
+            const filePath = `${supabaseUserId}/${spaceId}/${Date.now()}_${fileName}`;
             
             // Upload the file to storage first
             const { error: uploadError } = await supabaseClient.storage
                 .from("Vox")
                 .upload(filePath, contentBlob, {
                     cacheControl: "3600",
-                    upsert: true,
+                    upsert: false, // Changed to false to prevent overwriting
                 });
             
             if (uploadError) {
@@ -174,20 +192,22 @@ const BrainInterface = ({
             }
             
             // Now create the database record
+            const fileData = {
+                space_id: spaceId,
+                user_id: supabaseUserId,
+                file_name: fileName,
+                file_path: filePath,
+                file_type: "application/json",
+                file_size: contentBlob.size,
+                is_note: true,
+                is_brain_note: true,
+                note_content: initialContent,
+                metadata
+            };
+            
             const { data: newNote, error } = await supabaseClient
                 .from('space_files')
-                .insert([{
-                    space_id: spaceId,
-                    user_id: supabaseUserId,
-                    file_name: 'Second Brain',
-                    file_path: filePath,
-                    file_type: "application/json",
-                    file_size: contentBlob.size,
-                    is_note: true,
-                    is_brain_note: true,
-                    note_content: initialContent,
-                    metadata
-                }])
+                .insert([fileData])
                 .select()
                 .single();
             
@@ -196,11 +216,20 @@ const BrainInterface = ({
                 return;
             }
             
-            setBrainNote(newNote);
-            setBrainNoteId(newNote.id);
-            setBrainNoteContent(initialContent);
+            if (newNote) {
+                // Set the brain note state with the new note
+                setBrainNote(newNote);
+                setBrainNoteId(newNote.id);
+                setBrainNoteContent(initialContent);
+                console.log("Brain note created successfully");
+            } else {
+                console.error("Brain note creation failed: No file record returned");
+            }
         } catch (error) {
             console.error('Error in createNewBrainNote:', error);
+        } finally {
+            // Always reset the flag when done
+            setIsCreatingBrainNote(false);
         }
     };
     
@@ -394,19 +423,15 @@ const BrainInterface = ({
                     {/* Right Column - Knowledge Graph & Recent Updates */}
                     <div className="w-full lg:w-1/2 h-full flex flex-col gap-4 overflow-hidden">
                         {/* Knowledge Graph Card */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-semibold">Knowledge Graph</h2>
-                            </div>
-                            <p className="mb-4 text-gray-600 dark:text-gray-300">
-                                Visualize connections between your notes and concepts.
-                            </p>
-                            <button 
-                                onClick={() => setCurrentView('graph')}
-                                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                            >
-                                Open Knowledge Graph
-                            </button>
+                        <div 
+                            className="bg-white dark:bg-gray-800 rounded-lg shadow-md h-[300px]"
+                            onClick={() => setCurrentView('graph')}
+                        >
+                            <HierarchicalGraph 
+                                currentView="graph"
+                                setCurrentView={setCurrentView}
+                                spaceId={spaceId}
+                            />
                         </div>
                         
                         {/* Recent Updates Card */}
