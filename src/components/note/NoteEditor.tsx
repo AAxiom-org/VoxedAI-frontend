@@ -258,7 +258,7 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChi
   const handleDeclineChanges = useCallback(async () => {
     try {
       // Delete the virtual note without applying changes
-      const virtualPath = getVirtualNotePath(noteId);
+      const virtualPath = await getVirtualNotePath(noteId);
       if (virtualPath) {
         const supabaseClient = await getSupabaseClient();
         await supabaseClient
