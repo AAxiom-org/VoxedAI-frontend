@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Model types
 export const MODELS = {
-  NORMAL: "deepseek/deepseek-chat:free",
+  NORMAL: "google/gemini-2.0-flash-exp:free",
   REASONING: "deepseek/deepseek-r1:free"
 } as const;
 

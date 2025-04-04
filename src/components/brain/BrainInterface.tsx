@@ -424,9 +424,18 @@ const BrainInterface = ({
                     <div className="w-full lg:w-1/2 h-full flex flex-col gap-4 overflow-hidden">
                         {/* Knowledge Graph Card */}
                         <div 
-                            className="bg-white dark:bg-gray-800 rounded-lg shadow-md h-[300px]"
-                            onClick={() => setCurrentView('graph')}
+                            className="bg-white dark:bg-gray-800 rounded-lg shadow-md h-[300px] relative"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentView('graph');
+                            }}
                         >
+                            {/* Gray transparent overlay */}
+                            <div className="absolute inset-0 rounded-lg flex items-start justify-start">
+                                {/* Text in top left */}
+                                <span className="p-4 text-black font-medium underline">→ Tap to view graph</span>
+                            </div>
+                            
                             <HierarchicalGraph 
                                 currentView="graph"
                                 setCurrentView={setCurrentView}

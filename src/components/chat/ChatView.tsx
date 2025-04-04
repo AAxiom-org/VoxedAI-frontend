@@ -675,6 +675,19 @@ const ChatView = ({
     return events || [];
   };
 
+  // Helper function to check if we should hide the workflow
+  // Returns true if first event has decision: "finish"
+  const shouldHideWorkflow = (events: AgentEvent[]): boolean => {
+    if (!events || events.length === 0) {
+      return false;
+    }
+    
+    // Check if the first event is a decision event with "finish"
+    const firstEvent = events[0];
+    return firstEvent.event_type === "decision" && 
+           firstEvent.decision?.toLowerCase() === "finish";
+  };
+
   return (
     <div className={`flex flex-col h-full ${simplified ? 'relative pb-4' : ''}`}>
       {/* Style tag for custom animations */}
@@ -784,7 +797,9 @@ const ChatView = ({
                     )}
                     
                     {/* Agent events toggle button - Show only if message has workflow data */}
-                    {messageWorkflows.has(message.id) && messageWorkflows.get(message.id)!.length > 0 && (
+                    {messageWorkflows.has(message.id) && 
+                     messageWorkflows.get(message.id)!.length > 0 && 
+                     !shouldHideWorkflow(getWorkflowEvents(message.id)) && (
                       <button
                         onClick={() => toggleAgentEvents(message.id)}
                         className={`text-sm flex items-center ml-4 ${
@@ -810,7 +825,10 @@ const ChatView = ({
                   )}
                   
                   {/* Agent workflow timeline display */}
-                  {activeWorkflowMessageId === message.id && showAgentEvents && getWorkflowEvents(message.id).length > 0 &&
+                  {activeWorkflowMessageId === message.id && 
+                   showAgentEvents && 
+                   getWorkflowEvents(message.id).length > 0 &&
+                   !shouldHideWorkflow(getWorkflowEvents(message.id)) &&
                     <AgentTimeline events={getWorkflowEvents(message.id)} />
                   }
                 </div>
@@ -881,7 +899,8 @@ const ChatView = ({
                   )}
                   
                   {/* Streaming agent events toggle */}
-                  {streamingAgentEvents.length > 0 && (
+                  {streamingAgentEvents.length > 0 && 
+                   !shouldHideWorkflow(streamingAgentEvents) && (
                     <button
                       onClick={() => toggleAgentEvents()}
                       className={`text-sm flex items-center ml-4 ${
@@ -907,7 +926,9 @@ const ChatView = ({
                 )}
                 
                 {/* Streaming agent workflow timeline */}
-                {showAgentEvents && streamingAgentEvents.length > 0 &&
+                {showAgentEvents && 
+                 streamingAgentEvents.length > 0 &&
+                 !shouldHideWorkflow(streamingAgentEvents) &&
                   <AgentTimeline events={streamingAgentEvents} />
                 }
               </div>
