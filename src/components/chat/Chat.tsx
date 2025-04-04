@@ -1,4 +1,4 @@
-import ReaPt, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   streamChatWithGemini,
@@ -117,49 +117,6 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
     }
   };
 
-  // Create a new chat session
-  const createChatSession = async (initialMessage?: string) => {
-    if (!user?.id) {
-      console.error("Cannot create chat session: User ID is missing");
-      return null;
-    }
-
-    try {
-      // Use the first few words of the message as the chat title if provided
-      const title = initialMessage 
-        ? initialMessage.substring(0, 30) + (initialMessage.length > 30 ? "..." : "") 
-        : "New Chat";
-
-      const { data, error } = await supabase
-        .from("chat_sessions")
-        .insert([
-          {
-            user_id: user.id,
-            space_id: spaceId || "00000000-0000-0000-0000-000000000000", // Use current space or default
-            title: title,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error creating chat session:", error);
-        return null;
-      }
-
-      if (!data) {
-        console.error("No data returned when creating chat session");
-        return null;
-      }
-
-      setChatSessions((prevSessions) => [data, ...prevSessions]);
-      return data;
-    } catch (error) {
-      console.error("Error creating chat session:", error);
-      return null;
-    }
-  };
-
   // Fetch messages for a chat session
   const fetchMessages = async (sessionId: string) => {
     if (!sessionId) return;
@@ -183,45 +140,6 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
     }
   };
 
-  // Save a message to the database
-  const saveMessage = async (content: string, isUser: boolean, session?: ChatSession | null, workflow?: any[]) => {
-    // Use provided session or fallback to currentChatSession
-    const chatSession = session || currentChatSession;
-    
-    if (!chatSession) {
-      console.error("Cannot save message: No active chat session");
-      return false;
-    }
-    
-    if (!user?.id) {
-      console.error("Cannot save message: User ID is missing");
-      return false;
-    }
-
-    try {
-      const { error } = await supabase.from("chat_messages").insert([
-        {
-          chat_session_id: chatSession.id,
-          notebook_id: chatSession.space_id,
-          user_id: user.id,
-          content,
-          is_user: isUser,
-          workflow: workflow || null, // Store agent workflow events if available
-        },
-      ]);
-
-      if (error) {
-        console.error("Error saving message:", error);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Error saving message:", error);
-      return false;
-    }
-  };
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isStreaming) return;
@@ -236,56 +154,48 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
     setInputMessage("");
 
     try {
-      // When in home view, always create a new chat session
+      // When in home view, always start a new chat
       if (!isInChat) {
-        // Create a new chat session first
-        const newSession = await createChatSession(userMessage);
-        if (!newSession) {
-          console.error("Failed to create new chat session");
-          return;
-        }
+        // Create a temporary session until backend creates one
+        // We will update with the real session ID from the response
+        const tempSession: ChatSession = {
+          id: "temp-" + Date.now(),
+          user_id: user.id,
+          space_id: spaceId || "00000000-0000-0000-0000-000000000000",
+          title: userMessage.substring(0, 30) + (userMessage.length > 30 ? "..." : ""),
+          created_at: new Date().toISOString(),
+        };
         
-        // Set the pending session ref to prevent overriding during fetch
-        pendingSessionRef.current = newSession.id;
-        
-        // Important: Update current session and ensure we're in chat view
+        // Update the UI to show the new session
         setChatState({ 
-          currentSessionId: newSession.id,
+          currentSessionId: tempSession.id,
           selectedView: 'chat' 
         });
         
-        // Set messages to only contain this new message
-        const userMessageObj: ChatMessage = {
-          id: crypto.randomUUID(),
-          chat_session_id: newSession.id,
-          notebook_id: newSession.space_id,
+        // Create a temporary user message for the UI
+        const tempUserMessage: ChatMessage = {
+          id: "temp-msg-" + Date.now(),
+          chat_session_id: tempSession.id,
+          notebook_id: tempSession.space_id,
           user_id: user.id,
           content: userMessage,
           is_user: true,
           created_at: new Date().toISOString(),
         };
         
-        // Clear any existing messages and set only this one
-        setMessages([userMessageObj]);
+        // Update the messages state with the temporary message
+        setMessages([tempUserMessage]);
         
-        // Save message to database using the new session
-        const messageSaved = await saveMessage(userMessage, true, newSession);
-        if (!messageSaved) {
-          console.error("Failed to save user message to database");
-        }
-        
-        // Stream AI response with this message
-        await streamResponse(userMessageObj);
+        // Stream AI response (backend will create the real session and save both messages)
+        await streamResponse(tempUserMessage, null);
       } 
       // In chat view with existing session
       else if (currentChatSession) {
-        // Ensure we have the latest session data from our array
-        const latestSession = chatSessions.find(s => s.id === currentChatSession.id) || currentChatSession;
-        
-        const userMessageObj: ChatMessage = {
-          id: crypto.randomUUID(),
-          chat_session_id: latestSession.id,
-          notebook_id: latestSession.space_id,
+        // Create a temporary user message for the UI
+        const tempUserMessage: ChatMessage = {
+          id: "temp-msg-" + Date.now(),
+          chat_session_id: currentChatSession.id,
+          notebook_id: currentChatSession.space_id,
           user_id: user.id,
           content: userMessage,
           is_user: true,
@@ -293,81 +203,29 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         };
         
         // Add to existing messages
-        setMessages((prevMessages) => [...prevMessages, userMessageObj]);
+        setMessages((prevMessages) => [...prevMessages, tempUserMessage]);
         
-        // Save message to database
-        const messageSaved = await saveMessage(userMessage, true, latestSession);
-        if (!messageSaved) {
-          console.error("Failed to save user message to database");
-        }
-        
-        // Stream AI response
-        await streamResponse(userMessageObj);
-      } 
-      // No current session but in chat view (fallback)
-      else {
-        console.error("In chat view but no current session, creating new one");
-        
-        // Create a new chat session
-        const newSession = await createChatSession(userMessage);
-        if (!newSession) {
-          console.error("Failed to create new chat session");
-          return;
-        }
-        
-        // Set the pending session ref to prevent overriding during fetch
-        pendingSessionRef.current = newSession.id;
-        
-        // Update current session with explicit view setting
-        setChatState({ 
-          currentSessionId: newSession.id,
-          selectedView: 'chat' 
-        });
-        
-        // Add user message to messages array
-        const userMessageObj: ChatMessage = {
-          id: crypto.randomUUID(),
-          chat_session_id: newSession.id,
-          notebook_id: newSession.space_id,
-          user_id: user.id,
-          content: userMessage,
-          is_user: true,
-          created_at: new Date().toISOString(),
-        };
-        
-        // Set messages with just this message
-        setMessages([userMessageObj]);
-        
-        // Save message to database using the new session
-        const messageSaved = await saveMessage(userMessage, true, newSession);
-        if (!messageSaved) {
-          console.error("Failed to save user message to database");
-        }
-        
-        // Stream AI response
-        await streamResponse(userMessageObj);
+        // Stream AI response (backend will save both messages)
+        await streamResponse(tempUserMessage, currentChatSession.id);
       }
     } catch (error) {
       console.error("Error handling message submission:", error);
     }
   };
 
-  // Stream a response from the Gemini API
-  const streamResponse = async (userMessage: ChatMessage) => {
+  // Stream a response from the backend
+  const streamResponse = async (userMessage: ChatMessage, sessionId: string | null) => {
     try {
       setIsStreaming(true);
       setStreamingContent("");
       console.log("Starting to stream response for message:", userMessage);
 
-      // Ensure the correct session is active during streaming
-      pendingSessionRef.current = userMessage.chat_session_id;
-
-      // Format messages for Gemini API
+      // Format messages for the API
       const formattedMessages = formatMessagesForGemini([
         ...messages,
         userMessage,
       ]);
-      console.log("Formatted messages for Gemini:", formattedMessages);
+      console.log("Formatted messages for API:", formattedMessages);
 
       // Check if a note is open and fetch its content if needed
       let noteContent: string | null = null;
@@ -385,29 +243,13 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
           console.error("Error fetching note content:", error);
         }
       }
-      // Track final content in a local variable
-      let finalContent = "";
-      // Track agent events in a local variable
-      let agentEvents: any[] = [];
 
       // Stream the response
       await streamChatWithGemini(
         formattedMessages,
         (content) => {
           console.log("Stream update received:", content);
-          finalContent = content; // Update the local variable
           setStreamingContent(content);
-          
-          // Extract any agent events from the content
-          const agentEventsMatch = content.match(/<!--agent_events:(.*?)-->/s);
-          if (agentEventsMatch && agentEventsMatch[1]) {
-            try {
-              agentEvents = JSON.parse(agentEventsMatch[1]);
-              console.log("Extracted agent events:", agentEvents);
-            } catch (err) {
-              console.error("Error parsing agent events:", err);
-            }
-          }
         },
         user?.id || null,
         undefined, // isCodingQuestion
@@ -417,65 +259,50 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         selectedModel, // Pass the selected model
         spaceId, // Pass the space ID
         noteId, // Pass the note ID as active file ID if a note is open
+        sessionId // Pass the chat session ID
       );
 
-      console.log("Stream completed, final content:", finalContent);
-
-      // Save the response to the database
-      if (finalContent.trim()) {
-        console.log("Saving AI response to database");
-        
-        // Clean the final content by removing agent events tags
-        const cleanContent = finalContent.replace(/<!--agent_events:(.*?)-->/s, '');
-        
-        // Create a session object from the user message if needed
-        const messageSession = {
-          id: userMessage.chat_session_id,
-          space_id: userMessage.notebook_id,
-          user_id: userMessage.user_id,
-          title: "",  // Not needed for saving
-          created_at: ""  // Not needed for saving
-        };
-        
-        // Save the clean content and the workflow events to the database
-        await saveMessage(cleanContent, false, messageSession, agentEvents);
-
-        // Add AI response to messages array, but keep the tags for immediate display
-        const aiResponse: ChatMessage = {
-          id: crypto.randomUUID(),
-          chat_session_id: userMessage.chat_session_id,
-          notebook_id: userMessage.notebook_id,
-          user_id: user?.id || "",
-          content: finalContent,
-          is_user: false,
-          created_at: new Date().toISOString(),
-          workflow: agentEvents // Add workflow data to the message object
-        };
-
-        console.log("Adding AI response to messages array:", aiResponse);
-        setMessages((prevMessages) => [...prevMessages, aiResponse]);
-        console.log("New messages state after adding AI response:", [...messages, aiResponse]);
-        
-        // Make sure chat view is still active
-        setIsInChat(true);
-      } else {
-        console.warn("Stream content is empty, not saving response");
+      console.log("Stream completed");
+      
+      // Refresh chat sessions to get any new session created by the backend
+      await fetchChatSessions();
+      
+      // If we were in a new chat, find and set the newly created session
+      if (!sessionId || sessionId.startsWith("temp-")) {
+        console.log("New chat - looking for the created session");
+        // The backend should have created a new session and returned its ID
+        // For now, we'll just get the most recent session
+        const { data, error } = await supabase
+          .from("chat_sessions")
+          .select("*")
+          .eq("user_id", user?.id)
+          .eq("space_id", spaceId || "00000000-0000-0000-0000-000000000000")
+          .order("created_at", { ascending: false })
+          .limit(1);
+          
+        if (data && data.length > 0) {
+          const newSession = data[0];
+          console.log("Found new session:", newSession.id);
+          
+          // Update the session ID in the URL
+          setChatState({
+            currentSessionId: newSession.id,
+            selectedView: 'chat'
+          });
+          
+          // Fetch messages for the new session
+          await fetchMessages(newSession.id);
+        }
+      }
+      // Otherwise just refresh the messages for the current session
+      else if (sessionId) {
+        await fetchMessages(sessionId);
       }
     } catch (error) {
       console.error("Error streaming response:", error);
     } finally {
       setIsStreaming(false);
       setStreamingContent("");
-      
-      // Make sure the current session is still preserved
-      if (userMessage.chat_session_id !== currentSessionId) {
-        console.log("Ensuring correct session after streaming:", userMessage.chat_session_id);
-        setChatState({ 
-          currentSessionId: userMessage.chat_session_id,
-          selectedView: 'chat' 
-        });
-      }
-      
       console.log("Stream process finished, streaming state reset");
     }
   };
@@ -527,18 +354,6 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
       }
     }
   }, [currentSessionId]);
-
-  // Add debug logging for the messages array in a useEffect
-  useEffect(() => {
-    console.log("Messages state updated:", messages);
-  }, [messages]);
-
-  // Add debug logging for streaming content
-  useEffect(() => {
-    if (streamingContent) {
-      console.log("Streaming content updated:", streamingContent);
-    }
-  }, [streamingContent]);
 
   // Add effect to ensure chat view state is consistent with session ID
   useEffect(() => {

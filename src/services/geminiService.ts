@@ -18,6 +18,7 @@ import { getToggledFiles } from "./userService";
  * @param modelName Optional model name to use (defaults to NORMAL model)
  * @param spaceId Optional space ID for the current workspace
  * @param activeFileId Optional ID of the currently active file (e.g., open note)
+ * @param chatSessionId Optional ID of the current chat session
  */
 export async function streamChatWithGemini(
   history: Message[],
@@ -30,10 +31,12 @@ export async function streamChatWithGemini(
   modelName: Model = DEFAULT_MODEL,
   spaceId?: string,
   activeFileId?: string | null,
+  chatSessionId?: string | null,
 ): Promise<void> {
   try {
     console.log("Starting chat with history length:", history.length);
     console.log("Using model:", modelName);
+    console.log("Using chat session ID:", chatSessionId || "none");
 
     // Validate history array
     if (!history || history.length === 0) {
@@ -70,6 +73,8 @@ export async function streamChatWithGemini(
       user_id: userId,
       space_id: spaceId,
       active_file_id: activeFileId || null,
+      chat_session_id: chatSessionId || null, // Include chat session ID
+      save_to_db: true // Tell backend to save messages to DB
     };
 
     console.log("Sending query request:", queryRequest);
@@ -95,8 +100,8 @@ export async function streamChatWithGemini(
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let actualResponse = "";
     let streamedContent = "";
+    let actualResponse = "";
 
     try {
       while (true) {
@@ -155,22 +160,6 @@ function parseStreamingResponse(streamData: string): string {
   let agentEvents: any[] = [];
 
   try {
-    // Check for event markers in the raw stream data
-    const eventRegex = /\[EVENT:([^\]]+)\](.*?)\[\/EVENT\]/g;
-    let eventMatch;
-    while ((eventMatch = eventRegex.exec(streamData)) !== null) {
-      const eventType = eventMatch[1];
-      const eventData = eventMatch[2];
-      console.log(`Agent Event Detected - Type: ${eventType}`, eventData);
-      
-      // Store all agent events for debugging
-      agentEvents.push({
-        type: "agent_event",
-        event_type: eventType,
-        data: eventData
-      });
-    }
-
     // Split the stream data into lines
     const lines = streamData.split("\n");
 
@@ -194,79 +183,34 @@ function parseStreamingResponse(streamData: string): string {
           }
           
           // If it's a reasoning token, add it to the reasoning text
-          // The reasoning tokens will come from the backend with type "reasoning"
           else if (data.type === "reasoning" && data.content) {
             reasoningText += data.content;
+            
+            // Store reasoning text as a data attribute that can be accessed by the ChatView component
+            // This will be preserved in the final output
+            if (reasoningText.trim()) {
+              // Update extracted text to include the reasoning as a data attribute
+              let textWithoutReasoning = extractedText.replace(/<!--reasoning:.*?-->/s, "");
+              extractedText = textWithoutReasoning + "<!--reasoning:" + reasoningText.trim() + "-->";
+            }
           }
           
           // Handle agent events
           else if (data.type === "agent_event") {
             console.log("Agent Event from SSE:", data);
-            // Properly store the event with all its fields
-            const eventData = {
-              type: "agent_event",
-              event_type: data.event_type || "unknown",
-              // Include all other fields that might be present
-              ...(data.decision && { decision: data.decision }),
-              ...(data.file_id && { file_id: data.file_id }),
-              ...(data.tool && { tool: data.tool }),
-              ...(data.message && { message: data.message }),
-              ...(data.data && { data: data.data })
-            };
             // Store the agent event for returning to the UI
-            agentEvents.push(eventData);
-          }
-          // Handle error events
-          else if (data.type === "error") {
-            console.error("Error event from backend:", data);
-            agentEvents.push({
-              type: "agent_event",
-              event_type: "error",
-              message: data.message || "Unknown error"
-            });
+            agentEvents.push(data);
+            
+            // Update extracted text to include the agent events as a data attribute
+            // This will be preserved in the final output
+            let textWithoutEvents = extractedText.replace(/<!--agent_events:.*?-->/s, "");
+            extractedText = textWithoutEvents + "<!--agent_events:" + JSON.stringify(agentEvents) + "-->";
           }
         } catch (error) {
           // If JSON parsing fails, log the error and line for debugging
           console.warn("Failed to parse JSON in stream data line:", line, error);
         }
       }
-    }
-
-    // Log what we've extracted for debugging
-    console.log("Extracted text from SSE:", extractedText);
-    console.log("Agent events collected:", agentEvents);
-
-    // Trim the text first
-    extractedText = extractedText.trim();
-
-    // List of prefixes to check and remove
-    const prefixesToRemove = [
-      "Answer:",
-      "Answer :",
-      "AI:",
-      "AI :",
-      "Assistant:",
-      "Assistant :",
-    ];
-
-    // Check for each prefix and remove if found
-    for (const prefix of prefixesToRemove) {
-      if (extractedText.startsWith(prefix)) {
-        extractedText = extractedText.substring(prefix.length).trim();
-        break; // Exit after removing the first matching prefix
-      }
-    }
-
-    // If we have reasoning text, add it as a data attribute to the main text
-    if (reasoningText.trim()) {
-      // Store reasoning text as a data attribute that can be accessed by the ChatView component
-      extractedText = extractedText + "<!--reasoning:" + reasoningText.trim() + "-->";
-    }
-
-    // If we have agent events, add them as a data attribute
-    if (agentEvents.length > 0) {
-      // Make sure to properly serialize the agent events
-      return extractedText + "<!--agent_events:" + JSON.stringify(agentEvents) + "-->";
     }
 
     return extractedText;
