@@ -23,6 +23,8 @@ interface AgentEvent {
   tool?: string;
   message?: string;
   data?: string;
+  thinking?: string;
+  parameters?: Record<string, any>;
 }
 
 // Define a custom interface for code component props
@@ -170,6 +172,8 @@ const getStatusBadge = (eventType: string) => {
 // Agent timeline component to display workflow
 const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
   const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
+  const [lastProcessedEvent, setLastProcessedEvent] = useState<string | null>(null);
+  const [currentTransitionIndex, setCurrentTransitionIndex] = useState<number | null>(null);
 
   const toggleEvent = (index: number) => {
     setExpandedEvents(prev => ({
@@ -181,64 +185,195 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
   // Safety check to ensure events is an array
   const safeEvents = Array.isArray(events) ? events : [];
   
+  // Check for the last event to determine if we're still processing actions
+  useEffect(() => {
+    if (safeEvents.length > 0) {
+      const lastEvent = safeEvents[safeEvents.length - 1];
+      setLastProcessedEvent(lastEvent.event_type);
+      
+      // Set the current transition to be the one before the last event
+      if (safeEvents.length > 1) {
+        setCurrentTransitionIndex(safeEvents.length - 2);
+      } else {
+        setCurrentTransitionIndex(null);
+      }
+    }
+  }, [events]);
+
+  // Define transition animations
+  const transitionAnimations = `
+    @keyframes pulse {
+      0% { opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+    .custom-pulse {
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+  `;
+  
+  // Get the appropriate transition message based on event types
+  const getTransitionMessage = (currentEvent: AgentEvent, nextEvent: AgentEvent, index: number): JSX.Element | null => {
+    if (!currentEvent || !nextEvent) return null;
+
+    // Should only show a transition if this is the current transition point
+    const isCurrentTransition = index === currentTransitionIndex;
+    
+    // Only show transitions that make sense
+    let content: JSX.Element | null = null;
+
+    // Decision to tool transition
+    if (currentEvent.event_type === 'decision' && 
+        currentEvent.decision === 'tool' && 
+        (nextEvent.event_type === 'tool_execution_start' || 
+         nextEvent.event_type === 'file_edit_start' || 
+         nextEvent.event_type === 'file_lookup_start')) {
+      content = (
+        <div className={`ml-6 -mb-2 mt-1 text-xs text-purple-600 dark:text-purple-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+          <span className="mr-1">💡</span> Selecting the right tool...
+        </div>
+      );
+    }
+    
+    // File interactions
+    else if (currentEvent.event_type === 'file_edit_start' && nextEvent.event_type === 'file_edit_complete') {
+      content = (
+        <div className={`ml-6 -mb-2 mt-1 text-xs text-green-600 dark:text-green-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+          <span className="mr-1">✏️</span> Making changes to the file...
+        </div>
+      );
+    }
+    
+    else if (currentEvent.event_type === 'file_lookup_start' && nextEvent.event_type === 'file_found') {
+      content = (
+        <div className={`ml-6 -mb-2 mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+          <span className="mr-1">🔍</span> Searching for the right file...
+        </div>
+      );
+    }
+    
+    // Tool execution
+    else if (currentEvent.event_type === 'tool_execution_start' && nextEvent.event_type === 'tool_complete') {
+      content = (
+        <div className={`ml-6 -mb-2 mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+          <span className="mr-1">⚙️</span> Running the tool...
+        </div>
+      );
+    }
+    
+    // Decision to finish transition
+    else if (currentEvent.event_type !== 'decision' && 
+        nextEvent.event_type === 'decision' && 
+        nextEvent.decision === 'finish') {
+      content = (
+        <div className={`ml-6 -mb-2 mt-1 text-xs text-gray-600 dark:text-gray-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+          <span className="mr-1">✅</span> Finalizing the answer...
+        </div>
+      );
+    }
+    
+    // Only show the content if it's relevant to the current state
+    return isCurrentTransition && content ? (
+      <div className="transition-opacity duration-300">
+        {content}
+      </div>
+    ) : null;
+  };
+
   if (safeEvents.length === 0) {
     return null;
   }
 
   return (
     <div className="mt-4 space-y-2">
+      <style>{transitionAnimations}</style>
       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Agent Workflow</h4>
       <div className="relative border-l-2 border-gray-200 dark:border-gray-700 pl-4 space-y-4">
         {safeEvents.map((event, index) => (
-          <div 
-            key={index} 
-            className="relative animate-fadeIn transition-all duration-200"
-          >
-            {/* Timeline dot */}
-            <div className="absolute -left-[21px] mt-1.5 h-4 w-4 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary"></div>
-            </div>
-            
-            {/* Event card */}
-            <div className={`
-              p-3 rounded-lg border border-gray-200 dark:border-gray-700
-              hover:border-gray-300 dark:hover:border-gray-600 
-              transition-all cursor-pointer
-              ${expandedEvents[index] ? 'bg-gray-50 dark:bg-gray-800/60' : 'bg-white dark:bg-gray-900'}
-            `}
-            onClick={() => toggleEvent(index)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-full bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_10%,transparent)] dark:bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_20%,transparent)]">
-                    {getToolIcon(event.event_type)}
-                  </div>
-                  <span className="font-medium text-sm">
-                    {event.event_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(event.event_type)}
-                  <ChevronRight 
-                    className={`h-4 w-4 text-gray-400 transition-transform ${expandedEvents[index] ? 'rotate-90' : ''}`} 
-                  />
-                </div>
+          <React.Fragment key={index}>
+            <div className="relative animate-fadeIn transition-all duration-200">
+              {/* Timeline dot */}
+              <div className="absolute -left-[21px] mt-1.5 h-4 w-4 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary"></div>
               </div>
               
-              {expandedEvents[index] && (
-                <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-2">
-                  {event.data && <p>{event.data}</p>}
-                  {event.message && <p>{event.message}</p>}
-                  {event.decision && <p>Decision: {event.decision}</p>}
-                  {event.file_id && <p>File ID: {event.file_id}</p>}
-                  {event.tool && <p>Tool: {event.tool}</p>}
-                  {!event.data && !event.message && !event.decision && !event.file_id && !event.tool && (
-                    <p>No additional details available</p>
-                  )}
+              {/* Event card */}
+              <div className={`
+                p-3 rounded-lg border border-gray-200 dark:border-gray-700
+                hover:border-gray-300 dark:hover:border-gray-600 
+                transition-all cursor-pointer
+                ${expandedEvents[index] ? 'bg-gray-50 dark:bg-gray-800/60' : 'bg-white dark:bg-gray-900'}
+              `}
+              onClick={() => toggleEvent(index)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-full bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_10%,transparent)] dark:bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_20%,transparent)]">
+                      {getToolIcon(event.event_type)}
+                    </div>
+                    <span className="font-medium text-sm">
+                      {event.event_type === 'tool_selected' 
+                        ? `Selected Tool: ${event.tool}` 
+                        : event.event_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(event.event_type)}
+                    <ChevronRight 
+                      className={`h-4 w-4 text-gray-400 transition-transform ${expandedEvents[index] ? 'rotate-90' : ''}`} 
+                    />
+                  </div>
                 </div>
-              )}
+                
+                {expandedEvents[index] && (
+                  <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-2">
+                    {/* Tool selection details with parameters and reasoning */}
+                    {event.event_type === 'tool_selected' && (
+                      <>
+                        {event.parameters && Object.keys(event.parameters).length > 0 && (
+                          <div className="mb-2">
+                            <h5 className="font-medium text-gray-700 dark:text-gray-300">Parameters:</h5>
+                            <div className="pl-3 mt-1 space-y-1">
+                              {Object.entries(event.parameters).map(([key, value]) => (
+                                <div key={key} className="font-mono text-xs">
+                                  <span className="text-blue-600 dark:text-blue-400">{key}:</span> 
+                                  <span className="text-gray-800 dark:text-gray-200"> {typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {event.thinking && (
+                          <div className="mt-2">
+                            <h5 className="font-medium text-gray-700 dark:text-gray-300">Reasoning:</h5>
+                            <div className="pl-3 mt-1 whitespace-pre-wrap text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                              {event.thinking}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Regular event details */}
+                    {event.data && <p>{event.data}</p>}
+                    {event.message && <p>{event.message}</p>}
+                    {event.decision && <p>Decision: {event.decision}</p>}
+                    {event.file_id && <p>File ID: {event.file_id}</p>}
+                    {(event.event_type !== 'tool_selected' && event.tool) && <p>Tool: {event.tool}</p>}
+                    
+                    {!event.data && !event.message && !event.decision && !event.file_id && 
+                     !event.tool && !event.thinking && !event.parameters && (
+                      <p>No additional details available</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+            
+            {/* Show transition message if appropriate */}
+            {index < safeEvents.length - 1 && getTransitionMessage(event, safeEvents[index + 1], index)}
+          </React.Fragment>
         ))}
       </div>
     </div>
@@ -524,27 +659,48 @@ const ChatView = ({
     // Process messages to extract reasoning
     messages.forEach(message => {
       if (!message.is_user) {
-        // Check if this message contains reasoning
-        const { text, reasoning } = extractReasoning(message.content);
-        
-        if (reasoning) {
-          // Store reasoning data for this message (or update if already exists)
-          setReasoningData(prev => {
-            const newMap = new Map(prev);
-            // If we already have reasoning data, preserve visibility state
-            const existingData = prev.get(message.id);
-            newMap.set(message.id, { 
-              content: reasoning, 
-              visible: existingData ? existingData.visible : false // Default to hidden for new items
+        // First check if the message has reasoning data directly from the database
+        if (message.reasoning && typeof message.reasoning === 'object' && 'content' in message.reasoning) {
+          // Set reasoning data from database field
+          const reasoningContent = message.reasoning.content as string;
+          if (reasoningContent) {
+            setReasoningData(prev => {
+              const newMap = new Map(prev);
+              // If we already have reasoning data, preserve visibility state
+              const existingData = prev.get(message.id);
+              newMap.set(message.id, { 
+                content: reasoningContent, 
+                visible: existingData ? existingData.visible : false // Default to hidden for new items
+              });
+              return newMap;
             });
-            return newMap;
-          });
+            console.log(`Set reasoning data from database for ${message.id.substring(0, 8)}`);
+          }
+        } 
+        // Then check content for embedded reasoning (for backward compatibility)
+        else {
+          // Check if this message contains reasoning
+          const { text, reasoning } = extractReasoning(message.content);
           
-          // Update the message content to remove the reasoning comment
-          if (message.content !== text) {
-            message.content = text;
-            hasModifiedMessages = true;
-            console.log(`Modified message ${message.id.substring(0, 8)} to remove reasoning comment`);
+          if (reasoning) {
+            // Store reasoning data for this message (or update if already exists)
+            setReasoningData(prev => {
+              const newMap = new Map(prev);
+              // If we already have reasoning data, preserve visibility state
+              const existingData = prev.get(message.id);
+              newMap.set(message.id, { 
+                content: reasoning, 
+                visible: existingData ? existingData.visible : false // Default to hidden for new items
+              });
+              return newMap;
+            });
+            
+            // Update the message content to remove the reasoning comment
+            if (message.content !== text) {
+              message.content = text;
+              hasModifiedMessages = true;
+              console.log(`Modified message ${message.id.substring(0, 8)} to remove reasoning comment`);
+            }
           }
         }
       }

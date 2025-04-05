@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import {
   streamChatWithGemini,
   formatMessagesForGemini,
+  type StreamChatOptions,
 } from "../../services/geminiService";
 import { useUser } from "@clerk/clerk-react";
 import { supabase } from "../../services/supabase";
@@ -121,10 +122,16 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
   const fetchMessages = async (sessionId: string) => {
     if (!sessionId) return;
     
+    // Skip fetching from database for temporary sessions
+    if (sessionId.startsWith("temp-")) {
+      console.log("Skipping database fetch for temporary session:", sessionId);
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from("chat_messages")
-        .select("id, chat_session_id, notebook_id, user_id, content, is_user, created_at, workflow")
+        .select("id, chat_session_id, space_id, user_id, content, is_user, created_at, workflow, reasoning")
         .eq("chat_session_id", sessionId)
         .order("created_at", { ascending: true });
 
@@ -176,7 +183,7 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         const tempUserMessage: ChatMessage = {
           id: "temp-msg-" + Date.now(),
           chat_session_id: tempSession.id,
-          notebook_id: tempSession.space_id,
+          space_id: tempSession.space_id,
           user_id: user.id,
           content: userMessage,
           is_user: true,
@@ -195,7 +202,7 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         const tempUserMessage: ChatMessage = {
           id: "temp-msg-" + Date.now(),
           chat_session_id: currentChatSession.id,
-          notebook_id: currentChatSession.space_id,
+          space_id: currentChatSession.space_id,
           user_id: user.id,
           content: userMessage,
           is_user: true,
@@ -244,23 +251,21 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         }
       }
 
-      // Stream the response
-      await streamChatWithGemini(
-        formattedMessages,
-        (content) => {
+      const streamChatOptions: StreamChatOptions = {
+        history: formattedMessages,
+        onStreamUpdate: (content) => {
           console.log("Stream update received:", content);
           setStreamingContent(content);
         },
-        user?.id || null,
-        undefined, // isCodingQuestion
-        undefined, // isNoteQuestion
-        undefined, // noteToggledFiles
-        noteContent || undefined,
-        selectedModel, // Pass the selected model
-        spaceId, // Pass the space ID
-        noteId, // Pass the note ID as active file ID if a note is open
-        sessionId // Pass the chat session ID
-      );
+        userId: user?.id || null,
+        modelName: selectedModel,
+        spaceId: spaceId,
+        activeFileId: noteId,
+        chatSessionId: sessionId,
+      }
+
+      // Stream the response
+      await streamChatWithGemini(streamChatOptions);
 
       console.log("Stream completed");
       
@@ -284,14 +289,26 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
           const newSession = data[0];
           console.log("Found new session:", newSession.id);
           
+          // Store the old messages to preserve them during transition
+          const oldMessages = [...messages];
+          
           // Update the session ID in the URL
           setChatState({
             currentSessionId: newSession.id,
             selectedView: 'chat'
           });
           
-          // Fetch messages for the new session
-          await fetchMessages(newSession.id);
+          // Fetch messages for the new session, but only if we get results
+          const { data: messageData } = await supabase
+            .from("chat_messages")
+            .select("id, chat_session_id, space_id, user_id, content, is_user, created_at, workflow, reasoning")
+            .eq("chat_session_id", newSession.id)
+            .order("created_at", { ascending: true });
+            
+          // Only update messages if we got data back, otherwise keep our UI state
+          if (messageData && messageData.length > 0) {
+            setMessages(messageData);
+          }
         }
       }
       // Otherwise just refresh the messages for the current session
@@ -346,6 +363,12 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
   // Add effect to handle changes in currentSessionId
   useEffect(() => {
     if (currentSessionId) {
+      // Skip for temporary sessions to preserve UI state
+      if (currentSessionId.startsWith("temp-")) {
+        console.log("Preserving UI state for temporary session:", currentSessionId);
+        return;
+      }
+      
       // Only clear messages if this isn't a pending session transition 
       // (because we've already set messages for the new session)
       if (pendingSessionRef.current !== currentSessionId) {
@@ -365,7 +388,10 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
   // Add effect to make sure messages is set correctly when streaming stops
   useEffect(() => {
     if (!isStreaming && currentSessionId && messages.length === 0) {
-      fetchMessages(currentSessionId);
+      // Skip for temporary sessions
+      if (!currentSessionId.startsWith("temp-")) {
+        fetchMessages(currentSessionId);
+      }
     }
   }, [isStreaming, currentSessionId, messages.length]);
 

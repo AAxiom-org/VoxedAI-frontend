@@ -3,8 +3,7 @@ const API_URL = "https://voxed.aidanandrews.org/api/v1/agent/run";
 
 // Import types from types directory
 import { type Message, type MessageRole } from "../types/gemini";
-import { MODELS, DEFAULT_MODEL, type Model } from "../types/models";
-import { getToggledFiles } from "./userService";
+import { DEFAULT_MODEL, type Model } from "../types/models";
 
 /**
  * Streams a chat response from the Gemini model
@@ -20,19 +19,27 @@ import { getToggledFiles } from "./userService";
  * @param activeFileId Optional ID of the currently active file (e.g., open note)
  * @param chatSessionId Optional ID of the current chat session
  */
-export async function streamChatWithGemini(
-  history: Message[],
-  onStreamUpdate: (content: string) => void,
-  userId: string | null,
-  isCodingQuestion: boolean = false,
-  isNoteQuestion: boolean = false,
-  noteToggledFiles?: string[],
-  noteContent?: string,
-  modelName: Model = DEFAULT_MODEL,
-  spaceId?: string,
-  activeFileId?: string | null,
-  chatSessionId?: string | null,
-): Promise<void> {
+interface StreamChatOptions {
+  history: Message[];
+  onStreamUpdate: (content: string) => void;
+  userId: string | null;
+  modelName?: Model;
+  spaceId?: string;
+  activeFileId?: string | null;
+  chatSessionId?: string | null;
+}
+
+export type { StreamChatOptions };
+
+export async function streamChatWithGemini({
+  history,
+  onStreamUpdate,
+  userId,
+  modelName = DEFAULT_MODEL,
+  spaceId,
+  activeFileId,
+  chatSessionId,
+}: StreamChatOptions): Promise<void> {
   try {
     console.log("Starting chat with history length:", history.length);
     console.log("Using model:", modelName);

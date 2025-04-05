@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 import type { Space } from "../types/space";
 import type { ChatMessage, ChatSession } from "../types/chat";
 import { addSpaceToWorkspace } from "./workspaceService";
-import { streamChatWithGemini } from "./geminiService";
+import { streamChatWithGemini, type StreamChatOptions } from "./geminiService";
 
 /**
  * Create a new space for a user
@@ -193,7 +193,7 @@ export async function getChatMessages(
   try {
     const { data, error } = await supabase
       .from("chat_messages")
-      .select("*")
+      .select("id, chat_session_id, space_id, user_id, content, is_user, created_at, workflow, reasoning")
       .eq("chat_session_id", chatSessionId)
       .order("created_at", { ascending: true });
 
@@ -533,21 +533,19 @@ export async function sendAndStreamChatMessage(
     // Stream the response
     let finalResponse = "";
 
-    await streamChatWithGemini(
-      userOnlyMessage,
-      (content) => {
+    const streamChatOptions: StreamChatOptions = {
+      history: userOnlyMessage,
+      onStreamUpdate: (content) => {
         onStreamContent(content);
         finalResponse = content;
       },
-      userId,
-      sandboxData !== undefined,
-      isNoteQuestion,
-      undefined,
-      noteContent,
-      undefined,
-      spaceId,
-      activeFileId
-    );
+      userId: userId,
+      spaceId: spaceId,
+      activeFileId: activeFileId,
+      chatSessionId: chatSessionId,
+    };
+
+    await streamChatWithGemini(streamChatOptions);
 
     console.log("Streaming complete. Saving AI message to Supabase");
 
