@@ -3,6 +3,7 @@ import { useSupabaseUser } from "../../contexts/UserContext";
 import HierarchicalGraph from "./Graph";
 import BlockNoteEditor from "../note/NoteEditor";
 import { useLayoutState } from "../../hooks/useLayoutState";
+import { CalendarIcon, ClockIcon, TagIcon, TrendingUp, FileTextIcon, GitGraph, SettingsIcon, BrainCircuit, SearchIcon, RefreshCwIcon } from "lucide-react";
 
 // Define interfaces for our data types
 interface BrainNoteMetadata {
@@ -60,12 +61,18 @@ const BrainInterface = ({
   const [brainNoteContent, setBrainNoteContent] = useState<string>("");
   const [recentEntries, setRecentEntries] = useState<ResearchEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
-  const [isCreatingBrainNote, setIsCreatingBrainNote] =
-    useState<boolean>(false);
+  const [isCreatingBrainNote, setIsCreatingBrainNote] = useState<boolean>(false);
+  const [statistics, setStatistics] = useState({
+    totalEntries: 0,
+    totalTags: 0,
+    lastUpdated: '',
+    entriesThisWeek: 0
+  });
   const [layout, setLayout] = useLayoutState();
-  layout;
   const { getSupabaseClient, supabaseUserId } = useSupabaseUser();
+  const [activeTab, setActiveTab] = useState<'brain' | 'digest'>('brain');
 
   // Fetch brain note and recent entries when component mounts
   useEffect(() => {
@@ -105,6 +112,7 @@ const BrainInterface = ({
               .download(brainNoteData.file_path);
           if (noteContentError) {
             console.error("Error fetching note content:", noteContentError);
+            if (layout) setError("Error fetching note content");
           } else {
             const noteContent = await noteContentData?.text();
             setBrainNoteContent(noteContent || "");
@@ -129,6 +137,41 @@ const BrainInterface = ({
           console.error("Error fetching recent entries:", recentEntriesError);
         } else {
           setRecentEntries(recentEntriesData || []);
+          
+          // Calculate statistics
+          const allEntries = await supabaseClient
+            .from("space_research")
+            .select("id, created_at, updated_at, metadata")
+            .eq("space_id", spaceId);
+            
+          if (allEntries.data) {
+            // Get unique tags
+            const allTags = new Set();
+            allEntries.data.forEach((entry: any) => {
+              if (entry.metadata?.tags) {
+                entry.metadata.tags.forEach((tag: string) => allTags.add(tag));
+              }
+            });
+            
+            // Get entries from this week
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            const entriesThisWeek = allEntries.data.filter(
+              (entry: any) => new Date(entry.created_at) > oneWeekAgo
+            ).length;
+            
+            // Last updated
+            const sortedByDate = [...allEntries.data].sort(
+              (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            );
+            
+            setStatistics({
+              totalEntries: allEntries.data.length,
+              totalTags: allTags.size,
+              lastUpdated: sortedByDate[0]?.updated_at || '',
+              entriesThisWeek
+            });
+          }
         }
       } catch (error) {
         console.error("Error in fetchBrainData:", error);
@@ -288,10 +331,13 @@ const BrainInterface = ({
       } catch (error) {
         console.error("Error in handleSaveBrainNote:", error);
       } finally {
-        setIsSavingNote(false);
+        // Add a small delay before setting isSavingNote to false to make the UI feedback more visible
+        setTimeout(() => {
+          setIsSavingNote(false);
+        }, 500);
       }
     },
-    [brainNoteId, brainNote, getSupabaseClient],
+    [brainNoteId, brainNote, getSupabaseClient, isSavingNote],
   );
 
   // Clear brain note content
@@ -367,6 +413,27 @@ const BrainInterface = ({
     });
   };
 
+  // Format relative time
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 60) {
+      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    } else if (diffDays < 30) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    } else {
+      return formatDate(dateString);
+    }
+  };
+
   // Extract title from metadata or provide default
   const getEntryTitle = (entry: ResearchEntry) => {
     return entry.metadata?.label || "Untitled Entry";
@@ -380,162 +447,328 @@ const BrainInterface = ({
   };
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="h-full w-full flex flex-col overflow-auto bg-background">
       {currentView === "main" && (
-        <div className="h-full w-full flex flex-col lg:flex-row p-4 gap-4 overflow-hidden">
-          {/* Left Column - Brain Note */}
-          <div className="w-full lg:w-1/2 h-full flex flex-col gap-4 overflow-hidden">
-            {/* Brain Note Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 flex flex-col h-full overflow-hidden">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold flex items-center">
-                  <span className="mr-2">🧠</span>
-                  Second Brain
-                </h2>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={handleOpenEditor}
-                    className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors"
-                  >
-                    Open Editor
-                  </button>
-                  <button
-                    onClick={handleClearBrainNote}
-                    className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-200 rounded-md transition-colors"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex mb-2">
-                {brainNote?.metadata?.tags?.map(
-                  (tag: string, index: number) => (
-                    <span
-                      key={index}
-                      className="mr-2 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ),
-                )}
-              </div>
-
-              {isLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="animate-pulse">Loading brain note...</div>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-auto">
-                  {brainNoteId && (
-                    <BlockNoteEditor
-                      onClose={() => {}}
-                      noteId={brainNoteId}
-                      noteContent={brainNoteContent}
-                      onSave={handleSaveBrainNote}
-                      noteName="Second Brain"
-                      isChild={true}
+        <div className="h-full w-full flex flex-col">
+          {/* Main Content */}
+          <div className="flex-1 p-4 grid grid-cols-12 gap-4 h-full overflow-hidden">
+            {/* Left Sidebar - with its own overflow */}
+            <div className="col-span-12 lg:col-span-3 lg:border-r border-gray-200 dark:border-gray-700 pr-4 overflow-y-auto max-h-full">
+              {/* Search Bar */}
+              <div className="flex items-center space-x-3 pt-4 mb-6">
+                  <div className="relative">
+                    <SearchIcon className="h-4 w-4 absolute left-2.5 top-2.5 text-gray-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Search..." 
+                      className="pl-8 pr-4 py-2 rounded-md text-sm bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
-                  )}
+                  </div>
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                  >
+                    <RefreshCwIcon className="h-5 w-5" />
+                  </button>
+              </div>
+              {/* Quick Stats */}
+              <div className="mb-6">
+                <h2 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Quick Stats</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 bg-indigo-100 dark:bg-indigo-900 p-1.5 rounded-md">
+                        <FileTextIcon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <div className="ml-2 sm:ml-3 min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Entries</p>
+                        <p className="text-lg sm:text-xl font-semibold">{statistics.totalEntries}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 bg-green-100 dark:bg-green-900 p-1.5 rounded-md">
+                        <TagIcon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="ml-2 sm:ml-3 min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Tags</p>
+                        <p className="text-lg sm:text-xl font-semibold">{statistics.totalTags}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 bg-blue-100 dark:bg-blue-900 p-1.5 rounded-md">
+                        <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="ml-2 sm:ml-3 min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">This Week</p>
+                        <p className="text-lg sm:text-xl font-semibold">{statistics.entriesThisWeek}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 bg-amber-100 dark:bg-amber-900 p-1.5 rounded-md">
+                        <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="ml-2 sm:ml-3 min-w-0">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Last Update</p>
+                        <p className="text-xs sm:text-sm font-medium truncate">
+                          {statistics.lastUpdated ? formatRelativeTime(statistics.lastUpdated) : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column - Knowledge Graph & Recent Updates */}
-          <div className="w-full lg:w-1/2 h-full flex flex-col gap-4 overflow-hidden">
-            {/* Knowledge Graph Card */}
-            <div
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md h-[300px] relative"
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentView("graph");
-              }}
-            >
-              {/* Gray transparent overlay */}
-              <div className="absolute inset-0 rounded-lg flex items-start justify-start">
-                {/* Text in top left */}
-                <span className="p-4 text-black font-medium underline">
-                  → Tap to view graph
-                </span>
               </div>
 
-              <HierarchicalGraph
-                currentView="graph"
-                setCurrentView={setCurrentView}
-                spaceId={spaceId}
-              />
+              {/* Knowledge Graph Preview */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200">Knowledge Graph</h2>
+                  <button 
+                    onClick={() => setCurrentView("graph")}
+                    className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
+                  >
+                    Full View
+                  </button>
+                </div>
+                <div 
+                  className="bg-background rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-52 overflow-hidden relative cursor-pointer"
+                  onClick={() => setCurrentView("graph")}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white dark:to-gray-800 opacity-30"></div>
+                  <HierarchicalGraph
+                    currentView="preview"
+                    setCurrentView={setCurrentView}
+                    spaceId={spaceId}
+                  />
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div>
+                <h2 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Quick Actions</h2>
+                <div className="space-y-2">
+                  <button className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                    <BrainCircuit className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
+                    <span>Start Agent Researching</span>
+                  </button>
+                  <button 
+                    onClick={handleOpenEditor}
+                    className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors"
+                  >
+                    <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                    <span>View Agent Status</span>
+                  </button>
+                  <button className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                    <GitGraph className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+                    <span>Rebuild Graph</span>
+                  </button>
+                  <button className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                    <SettingsIcon className="h-5 w-5 text-gray-600 dark:text-gray-400 mr-2" />
+                    <span>Settings</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Recent Updates Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 flex-1 overflow-hidden flex flex-col">
-              <h2 className="text-xl font-semibold mb-4">Recent Digest</h2>
-
-              {isLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="animate-pulse">Loading recent entries...</div>
-                </div>
-              ) : recentEntries.length > 0 ? (
-                <div className="space-y-4 pr-1 overflow-y-auto flex-1">
-                  {recentEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+            {/* Main Content Area - with its own overflow */}
+            <div className="col-span-12 lg:col-span-9 flex flex-col h-full overflow-hidden">
+              {/* Tabbed Interface */}
+              <div className="bg-background rounded-lg flex flex-col h-full">
+                <div className="bg-background">
+                  <div className="flex">
+                    <button 
+                      className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                        activeTab === 'brain' 
+                          ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
+                          : 'border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                      }`}
+                      onClick={() => setActiveTab('brain')}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-medium text-lg flex items-center">
-                          {entry.metadata?.emoji && (
-                            <span className="mr-2">{entry.metadata.emoji}</span>
-                          )}
-                          {getEntryTitle(entry)}
-                        </h3>
-                        <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
-                          {formatDate(entry.updated_at)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-3">
-                        {entry.content?.substring(0, 160) || "No content"}...
-                      </p>
-                      {entry.metadata?.tags &&
-                        entry.metadata.tags.length > 0 && (
-                          <div className="flex flex-wrap mt-3">
-                            {entry.metadata.tags
-                              .slice(0, 4)
-                              .map((tag: string, index: number) => (
-                                <span
-                                  key={index}
-                                  className="mr-2 mb-1 px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
-                                >
-                                  #{tag}
-                                </span>
-                              ))}
-                            {entry.metadata.tags.length > 4 && (
-                              <span className="text-xs text-gray-500 flex items-center">
-                                +{entry.metadata.tags.length - 4} more
+                      Second Brain Note
+                    </button>
+                    <button 
+                      className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                        activeTab === 'digest' 
+                          ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
+                          : 'border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                      }`}
+                      onClick={() => setActiveTab('digest')}
+                    >
+                      Recent Research Digest
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-auto">
+                  {/* Brain Note Card */}
+                  {activeTab === 'brain' && (
+                    <div className="h-full flex flex-col">
+                      <div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-background">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center">
+                            <span className="text-2xl mr-2">🧠</span>
+                            <h2 className="text-lg font-medium">Second Brain Note</h2>
+                            <span
+                              className={`ml-2 text-xs transition-opacity duration-300 ${isLoading ? "text-yellow-500" : error ? "text-red-500" : isSavingNote ? "text-yellow-500" : "text-green-500"}`}
+                            >
+                              {isLoading ? "loading..." : error ? "error saving" : isSavingNote ? "saving..." : "saved"}
+                            </span>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={handleOpenEditor}
+                              className="px-3 py-1.5 text-sm bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-md transition-colors"
+                            >
+                              Open Editor
+                            </button>
+                            <button
+                              onClick={handleClearBrainNote}
+                              className="px-3 py-1.5 text-sm bg-red-50 hover:bg-red-100 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-300 rounded-md transition-colors"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex mt-2">
+                          {brainNote?.metadata?.tags?.map(
+                            (tag: string, index: number) => (
+                              <span
+                                key={index}
+                                className="mr-2 px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full"
+                              >
+                                {tag}
                               </span>
+                            ),
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex-1 p-1 overflow-auto">
+                        {isLoading ? (
+                          <div className="flex-1 flex items-center justify-center h-full">
+                            <div className="animate-pulse flex flex-col items-center">
+                              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full mb-2"></div>
+                              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                              <div className="text-sm text-gray-500">Loading brain note...</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-full overflow-auto">
+                            {brainNoteId && (
+                              <BlockNoteEditor
+                                onClose={() => {}}
+                                noteId={brainNoteId}
+                                noteContent={brainNoteContent}
+                                onSave={handleSaveBrainNote}
+                                noteName="Second Brain"
+                                isChild={true}
+                                isLoading={isSavingNote}
+                                setIsLoading={setIsSavingNote}
+                              />
                             )}
                           </div>
                         )}
+                      </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Recent Digest */}
+                  {activeTab === 'digest' && (
+                    <div className="h-full flex flex-col">
+                      <div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-background">
+                        <div className="flex justify-between items-center">
+                          <h2 className="text-lg font-medium">Recent Research Digest</h2>
+                          <button className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium">
+                            View All
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 flex-1 overflow-auto">
+                        {isLoading ? (
+                          <div className="space-y-4">
+                            {[...Array(3)].map((_, i) => (
+                              <div key={i} className="animate-pulse">
+                                <div className="h-5 w-1/3 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                                <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : recentEntries.length > 0 ? (
+                          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {recentEntries.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="py-4 first:pt-0 last:pb-0 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                              >
+                                <div className="flex items-start justify-between mb-1">
+                                  <h3 className="font-medium text-lg flex items-center">
+                                    {entry.metadata?.emoji && (
+                                      <span className="mr-2">{entry.metadata.emoji}</span>
+                                    )}
+                                    {getEntryTitle(entry)}
+                                  </h3>
+                                  <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                                    {formatRelativeTime(entry.updated_at)}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                                  {entry.content?.substring(0, 160) || "No content"}...
+                                </p>
+                                {entry.metadata?.tags && entry.metadata.tags.length > 0 && (
+                                  <div className="flex flex-wrap mt-2">
+                                    {entry.metadata.tags.slice(0, 3).map((tag: string, index: number) => (
+                                      <span
+                                        key={index}
+                                        className="mr-2 mb-1 px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+                                      >
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                    {entry.metadata.tags.length > 3 && (
+                                      <span className="text-xs text-gray-500 flex items-center">
+                                        +{entry.metadata.tags.length - 3} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center p-8 text-gray-500 bg-background rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                            <div className="text-center">
+                              <p>No recent entries found.</p>
+                              <p className="text-sm mt-2">
+                                Start adding research notes to see them here.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center justify-center p-8 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-                  <div className="text-center">
-                    <p>No recent entries found.</p>
-                    <p className="text-sm mt-2">
-                      Start adding research notes to see them here.
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {currentView === "graph" && (
-        <div className="h-full overflow-hidden">
+        <div className="h-full overflow-hidden relative">
+          <button
+            onClick={() => setCurrentView("main")}
+            className="absolute top-4 left-4 z-10 px-3 py-2 bg-background text-gray-800 dark:text-gray-200 rounded-md shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center"
+          >
+            <span>← Back to Dashboard</span>
+          </button>
           <HierarchicalGraph
             currentView="graph"
             setCurrentView={setCurrentView}
@@ -545,6 +778,6 @@ const BrainInterface = ({
       )}
     </div>
   );
-};
+}
 
 export default BrainInterface;

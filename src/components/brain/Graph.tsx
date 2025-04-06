@@ -32,7 +32,7 @@ interface DetailedGraphs {
 }
 
 interface HierarchicalGraphProps {
-  currentView: "graph" | "detailed";
+  currentView: "graph" | "detailed" | "preview";
   setCurrentView: (
     view: "main" | "graph" | "detailed",
     nodeId?: string,

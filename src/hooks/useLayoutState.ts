@@ -25,7 +25,7 @@ const DEFAULT_LAYOUT: LayoutState = {
   selectedNoteId: null,
   selectedNodeId: null,
   rightPanelCollapsed: false,
-  brainView: "graph",
+  brainView: "main",
   panelSizes: {
     sidebar: 250,
     main: 700,
