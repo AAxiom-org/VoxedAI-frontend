@@ -67,7 +67,6 @@ const Space = () => {
   const showNote = selectedView === "notes";
   const showSandbox = selectedView === "code";
   const showBrain = selectedView === "brain";
-  setIsDragging(false);
 
   // Update state setters to work with the layout state
   const setSidebarOpen = (open: boolean) => setLayout({ sidebarOpen: open });
@@ -562,7 +561,36 @@ const Space = () => {
   }, [layout.panelSizes?.sidebar]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-900">
+    <div 
+      className="flex h-screen overflow-hidden bg-white dark:bg-gray-900"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only set dragging to false if we're leaving the container
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setIsDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0 && fileInputRef.current) {
+          fileInputRef.current.files = files;
+          handleFileUpload({ target: { files } } as React.ChangeEvent<HTMLInputElement>);
+        }
+      }}
+    >
       {/* Drag overlay - only shown when dragging */}
       {isDragging && (
         <div className="absolute inset-0 bg-gray-900/50 dark:bg-gray-800/70 z-50 flex items-center justify-center">
