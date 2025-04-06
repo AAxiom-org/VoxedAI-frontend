@@ -21,53 +21,56 @@ const ChatGrid = ({
 }: ChatGridProps) => {
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [sessionsWithMessages, setSessionsWithMessages] = useState<ChatSessionWithLastMessage[]>([]);
+  const [sessionsWithMessages, setSessionsWithMessages] = useState<
+    ChatSessionWithLastMessage[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch the last message for each chat session using a more efficient approach
   useEffect(() => {
     const fetchLastMessages = async () => {
-        if (!user?.id || chatSessions.length === 0) {
+      if (!user?.id || chatSessions.length === 0) {
         setIsLoading(false);
         return;
-        }
+      }
 
-        setIsLoading(true);
-      
-        try {
-            const sessionPromises = chatSessions.map(async (session) => {
-            const { data: msgData, error: msgError } = await supabase
-                .from("chat_messages")
-                .select("*")
-                .eq("chat_session_id", session.id)
-                .order("created_at", { ascending: false })
-                .limit(1);
+      setIsLoading(true);
 
-            if (msgError) {
-                console.error("Error fetching last message:", msgError);
-                return {
-                ...session,
-                lastMessage: undefined,
-                };
-            }
+      try {
+        const sessionPromises = chatSessions.map(async (session) => {
+          const { data: msgData, error: msgError } = await supabase
+            .from("chat_messages")
+            .select("*")
+            .eq("chat_session_id", session.id)
+            .order("created_at", { ascending: false })
+            .limit(1);
 
+          if (msgError) {
+            console.error("Error fetching last message:", msgError);
             return {
-                ...session,
-                lastMessage: msgData && msgData.length > 0 ? msgData[0].content : undefined,
+              ...session,
+              lastMessage: undefined,
             };
-            });
+          }
 
-            const sessionsWithLastMessages = await Promise.all(sessionPromises);
-            setSessionsWithMessages(sessionsWithLastMessages);
-            setIsLoading(false);
-            return;
-        } catch (error) {
+          return {
+            ...session,
+            lastMessage:
+              msgData && msgData.length > 0 ? msgData[0].content : undefined,
+          };
+        });
+
+        const sessionsWithLastMessages = await Promise.all(sessionPromises);
+        setSessionsWithMessages(sessionsWithLastMessages);
+        setIsLoading(false);
+        return;
+      } catch (error) {
         console.error("Error fetching messages:", error);
-        
+
         // Fallback to empty messages
-        const sessionsWithNoMessages = chatSessions.map(session => ({
+        const sessionsWithNoMessages = chatSessions.map((session) => ({
           ...session,
-          lastMessage: undefined
+          lastMessage: undefined,
         }));
         setSessionsWithMessages(sessionsWithNoMessages);
       } finally {
@@ -83,7 +86,8 @@ const ChatGrid = ({
     const searchLower = searchQuery.toLowerCase();
     return (
       session.title.toLowerCase().includes(searchLower) ||
-      (session.lastMessage && session.lastMessage.toLowerCase().includes(searchLower))
+      (session.lastMessage &&
+        session.lastMessage.toLowerCase().includes(searchLower))
     );
   });
 
@@ -119,7 +123,7 @@ const ChatGrid = ({
           </svg>
           Back
         </button>
-                
+
         <div className="flex-1 max-w-md ml-auto">
           <div className="relative">
             <input
@@ -131,8 +135,8 @@ const ChatGrid = ({
             />
             <div className="absolute right-3 top-2.5 text-gray-400">
               {searchQuery ? (
-                <X 
-                  className="h-5 w-5 cursor-pointer" 
+                <X
+                  className="h-5 w-5 cursor-pointer"
                   onClick={() => setSearchQuery("")}
                 />
               ) : (
@@ -165,14 +169,17 @@ const ChatGrid = ({
               className="p-4 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition flex flex-col h-36"
             >
               <div className="flex justify-between mb-2 items-start">
-                <h3 className="font-medium text-lg line-clamp-1" title={session.title}>
+                <h3
+                  className="font-medium text-lg line-clamp-1"
+                  title={session.title}
+                >
                   {truncateText(session.title, 40)}
                 </h3>
                 <span className="text-xs text-gray-500 whitespace-nowrap">
                   {new Date(session.created_at).toLocaleDateString()}
                 </span>
               </div>
-              
+
               {session.lastMessage ? (
                 <p className="text-gray-600 text-sm line-clamp-3 flex-1 overflow-hidden">
                   {truncateText(session.lastMessage, 120)}
@@ -188,4 +195,4 @@ const ChatGrid = ({
   );
 };
 
-export default ChatGrid; 
+export default ChatGrid;

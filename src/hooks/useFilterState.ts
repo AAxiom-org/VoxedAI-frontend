@@ -1,25 +1,25 @@
-import { useUrlState } from './useUrlState';
+import { useUrlState } from "./useUrlState";
 
 export type FilterOptions = {
   search?: string;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
   workspaceId?: string | null;
   includeNested?: boolean;
   page?: number;
-  view?: 'list' | 'grid';
+  view?: "list" | "grid";
   tags?: string[];
   [key: string]: any;
 };
 
 const defaultFilters: FilterOptions = {
-  search: '',
-  sortBy: 'created_at',
-  sortOrder: 'desc',
+  search: "",
+  sortBy: "created_at",
+  sortOrder: "desc",
   workspaceId: null,
   includeNested: false,
   page: 1,
-  view: 'grid',
+  view: "grid",
   tags: [],
 };
 
@@ -31,10 +31,10 @@ const defaultFilters: FilterOptions = {
  */
 export function useFilterState(
   initialFilters: Partial<FilterOptions> = {},
-  key = 'filters'
+  key = "filters",
 ): [FilterOptions, (filters: Partial<FilterOptions>) => void] {
   const mergedDefaults = { ...defaultFilters, ...initialFilters };
-  
+
   const [filters, setFiltersRaw] = useUrlState<FilterOptions>({
     key,
     defaultValue: mergedDefaults,
@@ -46,4 +46,4 @@ export function useFilterState(
   };
 
   return [filters, setFilters];
-} 
+}

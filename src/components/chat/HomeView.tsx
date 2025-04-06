@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { ChatSession } from "../../types/chat";
 import { ChevronDown } from "lucide-react";
-import { Model, DEFAULT_MODEL, MODELS, MODEL_DISPLAY_NAMES } from "../../types/models";
+import {
+  Model,
+  DEFAULT_MODEL,
+  MODELS,
+  MODEL_DISPLAY_NAMES,
+} from "../../types/models";
 import Tooltip from "../common/Tooltip";
 
 interface HomeViewProps {
@@ -32,14 +37,14 @@ const HomeView = ({
   onViewAllClick,
 }: HomeViewProps) => {
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-  
+
   // Toggle the model dropdown
   const toggleModelDropdown = () => {
     if (!isStreaming) {
       setIsModelDropdownOpen(!isModelDropdownOpen);
     }
   };
-  
+
   // Handle model selection
   const handleModelSelect = (model: Model) => {
     if (setSelectedModel) {
@@ -53,7 +58,9 @@ const HomeView = ({
       {/* Initial view with centered chat bar */}
       <div className="flex flex-col items-center justify-center space-y-14 py-48">
         <div>
-          <h1 className="text-4xl font-bold text-center">Start a new conversation</h1>
+          <h1 className="text-4xl font-bold text-center">
+            Start a new conversation
+          </h1>
         </div>
         {/* Chat bar in the middle of the page */}
         <div className="w-full max-w-3xl px-4">
@@ -107,20 +114,29 @@ const HomeView = ({
                         aria-expanded={isModelDropdownOpen}
                         aria-haspopup="true"
                       >
-                        <span className="mr-1">{MODEL_DISPLAY_NAMES[selectedModel]}</span>
-                        <ChevronDown size={12} className={`transition-transform ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
+                        <span className="mr-1">
+                          {MODEL_DISPLAY_NAMES[selectedModel]}
+                        </span>
+                        <ChevronDown
+                          size={12}
+                          className={`transition-transform ${isModelDropdownOpen ? "rotate-180" : ""}`}
+                        />
                       </button>
                     </Tooltip>
                     {isModelDropdownOpen && (
                       <div className="absolute z-10 bottom-full mb-1 left-0 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 text-sm min-w-[120px]">
-                        <ul role="menu" aria-orientation="vertical" aria-labelledby="model-menu">
+                        <ul
+                          role="menu"
+                          aria-orientation="vertical"
+                          aria-labelledby="model-menu"
+                        >
                           {Object.entries(MODELS).map(([key, value]) => (
                             <li key={key}>
                               <button
                                 type="button"
                                 className={`
                                   w-full text-left px-3 py-1.5
-                                  ${value === selectedModel ? 'bg-gray-50 dark:bg-gray-700' : ''} 
+                                  ${value === selectedModel ? "bg-gray-50 dark:bg-gray-700" : ""} 
                                   hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
                                 `}
                                 onClick={() => handleModelSelect(value)}
@@ -163,11 +179,9 @@ const HomeView = ({
       {/* Previous conversations section */}
       <div className="w-full max-w-3xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-medium mb-4">
-            Previous conversations
-          </h2>
+          <h2 className="text-xl font-medium mb-4">Previous conversations</h2>
           {chatSessions.length > 3 && (
-            <button 
+            <button
               onClick={onViewAllClick}
               className="text-gray-500 text-sm mb-4 underline cursor-pointer hover:text-gray-700"
             >
@@ -196,4 +210,4 @@ const HomeView = ({
   );
 };
 
-export default HomeView; 
+export default HomeView;

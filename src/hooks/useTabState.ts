@@ -1,4 +1,4 @@
-import { useUrlState } from './useUrlState';
+import { useUrlState } from "./useUrlState";
 
 /**
  * A hook for managing tab selection state in the URL
@@ -8,7 +8,7 @@ import { useUrlState } from './useUrlState';
  */
 export function useTabState<T extends string>(
   tabKey: string,
-  defaultTab: T
+  defaultTab: T,
 ): [T, (tab: T) => void] {
   const [selectedTab, setSelectedTab] = useUrlState<T>({
     key: tabKey,
@@ -24,14 +24,14 @@ export function useTabState<T extends string>(
  * @returns An object with getters and setters for each tab
  */
 export function useMultiTabState<T extends Record<string, string>>(
-  tabs: T
+  tabs: T,
 ): { [K in keyof T]: [T[K], (tab: T[K]) => void] } {
   const result = {} as { [K in keyof T]: [T[K], (tab: T[K]) => void] };
-  
+
   for (const [key, defaultValue] of Object.entries(tabs)) {
     // @ts-ignore - Dynamic creation of hooks
     result[key] = useTabState(key, defaultValue);
   }
-  
+
   return result;
-} 
+}

@@ -81,7 +81,7 @@ export async function streamChatWithGemini({
       space_id: spaceId,
       active_file_id: activeFileId || null,
       chat_session_id: chatSessionId || null, // Include chat session ID
-      save_to_db: true // Tell backend to save messages to DB
+      save_to_db: true, // Tell backend to save messages to DB
     };
 
     console.log("Sending query request:", queryRequest);
@@ -118,7 +118,7 @@ export async function streamChatWithGemini({
         // Decode the chunk
         const chunk = decoder.decode(value, { stream: true });
         streamedContent += chunk;
-        
+
         // Debug raw chunk
         console.log("Raw chunk received:", chunk);
 
@@ -188,34 +188,52 @@ function parseStreamingResponse(streamData: string): string {
           if (data.type === "token" && data.content) {
             extractedText += data.content;
           }
-          
+
           // If it's a reasoning token, add it to the reasoning text
           else if (data.type === "reasoning" && data.content) {
             reasoningText += data.content;
-            
+
             // Store reasoning text as a data attribute that can be accessed by the ChatView component
             // This will be preserved in the final output
             if (reasoningText.trim()) {
               // Update extracted text to include the reasoning as a data attribute
-              let textWithoutReasoning = extractedText.replace(/<!--reasoning:.*?-->/s, "");
-              extractedText = textWithoutReasoning + "<!--reasoning:" + reasoningText.trim() + "-->";
+              let textWithoutReasoning = extractedText.replace(
+                /<!--reasoning:.*?-->/s,
+                "",
+              );
+              extractedText =
+                textWithoutReasoning +
+                "<!--reasoning:" +
+                reasoningText.trim() +
+                "-->";
             }
           }
-          
+
           // Handle agent events
           else if (data.type === "agent_event") {
             console.log("Agent Event from SSE:", data);
             // Store the agent event for returning to the UI
             agentEvents.push(data);
-            
+
             // Update extracted text to include the agent events as a data attribute
             // This will be preserved in the final output
-            let textWithoutEvents = extractedText.replace(/<!--agent_events:.*?-->/s, "");
-            extractedText = textWithoutEvents + "<!--agent_events:" + JSON.stringify(agentEvents) + "-->";
+            let textWithoutEvents = extractedText.replace(
+              /<!--agent_events:.*?-->/s,
+              "",
+            );
+            extractedText =
+              textWithoutEvents +
+              "<!--agent_events:" +
+              JSON.stringify(agentEvents) +
+              "-->";
           }
         } catch (error) {
           // If JSON parsing fails, log the error and line for debugging
-          console.warn("Failed to parse JSON in stream data line:", line, error);
+          console.warn(
+            "Failed to parse JSON in stream data line:",
+            line,
+            error,
+          );
         }
       }
     }

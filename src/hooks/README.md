@@ -10,7 +10,7 @@ The base hook for all URL state management. Persists any state in the URL search
 
 ```tsx
 const [value, setValue] = useUrlState<ValueType>({
-  key: 'urlKey',
+  key: "urlKey",
   defaultValue: initialValue,
   serializer: (value) => JSON.stringify(value), // optional
   deserializer: (value) => JSON.parse(value), // optional
@@ -23,8 +23,8 @@ A specialized hook for managing filter/search state in the URL.
 
 ```tsx
 const [filters, setFilters] = useFilterState({
-  search: '',
-  sortBy: 'created_at',
+  search: "",
+  sortBy: "created_at",
   workspaceId: null,
   // other initial values...
 });
@@ -33,7 +33,7 @@ const [filters, setFilters] = useFilterState({
 const { search, sortBy, workspaceId } = filters;
 
 // Update values (partial updates supported)
-setFilters({ search: 'new search', sortBy: 'name' });
+setFilters({ search: "new search", sortBy: "name" });
 ```
 
 ### `useLayoutState`
@@ -43,7 +43,7 @@ A hook for managing UI layout preferences in the URL.
 ```tsx
 const [layout, setLayout] = useLayoutState({
   sidebarOpen: true,
-  selectedView: 'chat',
+  selectedView: "chat",
   // other initial values...
 });
 
@@ -59,7 +59,7 @@ setLayout({ sidebarOpen: false });
 A hook for managing tab selection in the URL.
 
 ```tsx
-const [selectedTab, setSelectedTab] = useTabState('tabKey', 'defaultTab');
+const [selectedTab, setSelectedTab] = useTabState("tabKey", "defaultTab");
 ```
 
 ### `useMultiTabState`
@@ -68,8 +68,8 @@ A hook for managing multiple tab selections in the URL.
 
 ```tsx
 const tabs = useMultiTabState({
-  primaryTab: 'info',
-  secondaryTab: 'details',
+  primaryTab: "info",
+  secondaryTab: "details",
 });
 
 // Access values
@@ -82,4 +82,4 @@ const [secondaryTab, setSecondaryTab] = tabs.secondaryTab;
 - **Shareable URLs**: Users can share URLs that preserve the exact state of the UI
 - **Browser Navigation**: Browser back/forward buttons work with state changes
 - **Persistence**: State is preserved on page refresh
-- **Bookmarking**: Users can bookmark specific states of the application 
+- **Bookmarking**: Users can bookmark specific states of the application

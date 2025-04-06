@@ -31,7 +31,7 @@ createRoot(document.getElementById("root")!).render(
       <ClerkProvider
         domain=".voxed.ai"
         publishableKey={PUBLISHABLE_KEY}
-        routerPush={(to) => window.location.href = to}
+        routerPush={(to) => (window.location.href = to)}
         routerReplace={(to) => window.location.replace(to)}
         isSatellite={true}
         signInUrl="http://voxed.ai/sign-in"

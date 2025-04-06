@@ -22,5 +22,11 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "old_code/pages", "old_code/pages", "old_code/Preview.tsx", "old_code/SpaceDetail.tsx"]
+  "include": [
+    "src",
+    "old_code/pages",
+    "old_code/pages",
+    "old_code/Preview.tsx",
+    "old_code/SpaceDetail.tsx"
+  ]
 }

@@ -14,25 +14,31 @@ const LoadingSpinner = ({
   };
 
   return (
-    <div className={`fixed inset-0 flex items-center justify-center ${className}`}>
+    <div
+      className={`fixed inset-0 flex items-center justify-center ${className}`}
+    >
       <div className="mx-auto text-center">
         <div className="flex justify-center mb-4">
           <div
             className={`animate-spin rounded-full ${sizeClasses[size]} border-t-primary border-r-gray-200 border-b-gray-200 border-l-gray-200 dark:border-t-primary dark:border-r-gray-700 dark:border-b-gray-700 dark:border-l-gray-700`}
           ></div>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Loading...</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">If loading takes too long, please refresh the page or return home.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+          Loading...
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          If loading takes too long, please refresh the page or return home.
+        </p>
         <div className="flex justify-center space-x-4">
-          <button 
-            className="text-xs text-primary hover:text-primary-dark transition-colors" 
+          <button
+            className="text-xs text-primary hover:text-primary-dark transition-colors"
             onClick={() => window.location.reload()}
           >
             Refresh
           </button>
-          <button 
-            className="text-xs text-primary hover:text-primary-dark transition-colors" 
-            onClick={() => window.location.href = "/"}
+          <button
+            className="text-xs text-primary hover:text-primary-dark transition-colors"
+            onClick={() => (window.location.href = "/")}
           >
             Home
           </button>

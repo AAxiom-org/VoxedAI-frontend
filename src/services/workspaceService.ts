@@ -113,7 +113,11 @@ export async function getUserWorkspacesHierarchy(
 
     // First pass: create a map of all workspaces
     allWorkspaces.forEach((workspace) => {
-      workspaceMap.set(workspace.id, { ...workspace, children: [], spaces: [] });
+      workspaceMap.set(workspace.id, {
+        ...workspace,
+        children: [],
+        spaces: [],
+      });
     });
 
     // Second pass: build the hierarchy
@@ -160,9 +164,7 @@ export async function getSpacesInWorkspace(
 
     // Extract the space data from the join result
     // The spaces property is actually a single object, not an array
-    const spaces = data.map(
-      (item) => item.spaces,
-    ) as unknown as Space[];
+    const spaces = data.map((item) => item.spaces) as unknown as Space[];
 
     return { success: true, data: spaces };
   } catch (error) {
@@ -299,7 +301,9 @@ export async function getSpaceWorkspaces(
 
     // Extract the workspace data from the join result
     // The workspaces property is actually a single object, not an array
-    const workspaces = data.map((item) => item.workspaces) as unknown as Workspace[];
+    const workspaces = data.map(
+      (item) => item.workspaces,
+    ) as unknown as Workspace[];
 
     return { success: true, data: workspaces };
   } catch (error) {
@@ -343,9 +347,7 @@ export async function getUnorganizedSpaces(
     }
 
     // Create a set of organized space IDs for quick lookup
-    const organizedIds = new Set(
-      organizedSpaces?.map((n) => n.space_id) || [],
-    );
+    const organizedIds = new Set(organizedSpaces?.map((n) => n.space_id) || []);
 
     // Filter for spaces that are not in the organized set
     const unorganizedSpaces = allSpaces.filter(

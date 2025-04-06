@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useMobile } from '../contexts/MobileContext';
-import { useLayoutState } from '../hooks/useLayoutState';
+import React, { useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMobile } from "../contexts/MobileContext";
+import { useLayoutState } from "../hooks/useLayoutState";
 
 interface ResizablePanelProps {
   children: [React.ReactNode, React.ReactNode]; // Left and right content
@@ -42,21 +42,21 @@ const ResizablePanel = ({
   // Calculate new ratio based on mouse position - optimized for performance
   const handleMouseMove = (e: MouseEvent) => {
     if (!isResizing || !containerRef.current) return;
-    
+
     const containerRect = containerRef.current.getBoundingClientRect();
     const containerWidth = containerRect.width;
     const mouseX = e.clientX - containerRect.left;
-    
+
     // Calculate new ratio with constraints
     let newRatio = mouseX / containerWidth;
-    
+
     // Apply constraints
     const minLeftRatio = minLeftWidth / containerWidth;
     const minRightRatio = minRightWidth / containerWidth;
-    
+
     if (newRatio < minLeftRatio) newRatio = minLeftRatio;
-    if (newRatio > (1 - minRightRatio)) newRatio = 1 - minRightRatio;
-    
+    if (newRatio > 1 - minRightRatio) newRatio = 1 - minRightRatio;
+
     setRatio(newRatio);
   };
 
@@ -79,40 +79,40 @@ const ResizablePanel = ({
   // Add and remove event listeners with optimized cleanup
   useEffect(() => {
     if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
     }
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="flex w-full h-full relative overflow-hidden"
     >
       {/* Left panel */}
-      <div 
+      <div
         className="flex-none overflow-auto"
-        style={{ 
-          width: isCollapsed ? '100%' : `${ratio * 100}%`,
-          maxWidth: isCollapsed ? '100%' : '90%',
+        style={{
+          width: isCollapsed ? "100%" : `${ratio * 100}%`,
+          maxWidth: isCollapsed ? "100%" : "90%",
         }}
       >
         {children[0]}
       </div>
-      
+
       {/* Resizable separator */}
       {!isCollapsed && (
-        <div 
+        <div
           className="w-0.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 cursor-col-resize flex-none flex items-center justify-center relative group"
           onMouseDown={handleMouseDown}
         >
           <div className="w-[2px] h-16 bg-gray-400 dark:bg-gray-500 rounded-full group-hover:h-24 transition-all duration-200"></div>
-          
+
           {/* Drag handle dots - keeping hover effect */}
           <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="w-1 h-1 rounded-full bg-gray-500 dark:bg-gray-400 my-0.5"></div>
@@ -121,17 +121,17 @@ const ResizablePanel = ({
           </div>
         </div>
       )}
-      
+
       {/* Right panel */}
       {!isCollapsed && (
-        <div 
+        <div
           className="flex-none overflow-auto"
           style={{ width: `calc(${(1 - ratio) * 100}% - 0.5rem)` }}
         >
           {children[1]}
         </div>
       )}
-      
+
       {/* Collapse/expand button */}
       {collapsible && (
         <button
@@ -146,4 +146,4 @@ const ResizablePanel = ({
   );
 };
 
-export default ResizablePanel; 
+export default ResizablePanel;

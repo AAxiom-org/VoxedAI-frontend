@@ -1,81 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import { X, Loader, Plus, Hash } from 'lucide-react';
-import type { SpaceFile } from '../types/space';
-import EmojiPickerModal from './common/EmojiPicker';
+import React, { useState, useEffect } from "react";
+import { X, Loader, Plus, Hash } from "lucide-react";
+import type { SpaceFile } from "../types/space";
+import EmojiPickerModal from "./common/EmojiPicker";
 
 interface NoteModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateNote: (title: string, description: string, relatedFiles: string[], tags: string[], emoji: string) => Promise<void>;
+  onCreateNote: (
+    title: string,
+    description: string,
+    relatedFiles: string[],
+    tags: string[],
+    emoji: string,
+  ) => Promise<void>;
   isCreating: boolean;
   availableFiles: SpaceFile[];
 }
 
-const NoteModal = ({ 
-  isOpen, 
-  onClose, 
-  onCreateNote, 
+const NoteModal = ({
+  isOpen,
+  onClose,
+  onCreateNote,
   isCreating,
-  availableFiles
+  availableFiles,
 }: NoteModalProps) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
-  const [currentTag, setCurrentTag] = useState('');
-  const [emoji, setEmoji] = useState('📝');
+  const [currentTag, setCurrentTag] = useState("");
+  const [emoji, setEmoji] = useState("📝");
   const [error, setError] = useState<string | null>(null);
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setTitle('');
-      setDescription('');
+      setTitle("");
+      setDescription("");
       setSelectedFiles([]);
       setTags([]);
-      setCurrentTag('');
-      setEmoji('📝');
+      setCurrentTag("");
+      setEmoji("📝");
       setError(null);
     }
   }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
-      setError('Title is required');
+      setError("Title is required");
       return;
     }
-    
+
     try {
       await onCreateNote(title, description, selectedFiles, tags, emoji);
     } catch (err) {
-      setError('Failed to create note');
-      console.error('Error in note creation:', err);
+      setError("Failed to create note");
+      console.error("Error in note creation:", err);
     }
   };
 
   const toggleFileSelection = (fileId: string) => {
-    setSelectedFiles(prev => 
+    setSelectedFiles((prev) =>
       prev.includes(fileId)
-        ? prev.filter(id => id !== fileId)
-        : [...prev, fileId]
+        ? prev.filter((id) => id !== fileId)
+        : [...prev, fileId],
     );
   };
 
   const addTag = () => {
     if (currentTag.trim() && !tags.includes(currentTag.trim())) {
-      setTags(prev => [...prev, currentTag.trim()]);
-      setCurrentTag('');
+      setTags((prev) => [...prev, currentTag.trim()]);
+      setCurrentTag("");
     }
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(prev => prev.filter(tag => tag !== tagToRemove));
+    setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
   };
 
   const handleTagKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       addTag();
     }
@@ -87,8 +93,10 @@ const NoteModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fadeIn">
         <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-adaptive">Create New Note</h2>
-          <button 
+          <h2 className="text-xl font-semibold text-adaptive">
+            Create New Note
+          </h2>
+          <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
             disabled={isCreating}
@@ -97,26 +105,32 @@ const NoteModal = ({
             <X size={20} />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-5">
           {error && (
             <div className="mb-5 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded text-sm border border-red-200 dark:border-red-800">
               {error}
             </div>
           )}
-          
+
           <div className="mb-5 flex items-center gap-4">
             <div>
-              <label htmlFor="emoji" className="block text-sm font-medium text-adaptive mb-2">
+              <label
+                htmlFor="emoji"
+                className="block text-sm font-medium text-adaptive mb-2"
+              >
                 Icon
               </label>
-              <EmojiPickerModal 
-                onEmojiSelect={setEmoji} 
-                selectedEmoji={emoji} 
+              <EmojiPickerModal
+                onEmojiSelect={setEmoji}
+                selectedEmoji={emoji}
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="title" className="block text-sm font-medium text-adaptive mb-2">
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-adaptive mb-2"
+              >
                 Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -131,9 +145,12 @@ const NoteModal = ({
               />
             </div>
           </div>
-          
+
           <div className="mb-5">
-            <label htmlFor="description" className="block text-sm font-medium text-adaptive mb-2">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-adaptive mb-2"
+            >
               Description
             </label>
             <textarea
@@ -172,8 +189,11 @@ const NoteModal = ({
             </div>
             {tags.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {tags.map(tag => (
-                  <div key={tag} className="flex items-center bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 px-3 py-1.5 rounded-full text-sm">
+                {tags.map((tag) => (
+                  <div
+                    key={tag}
+                    className="flex items-center bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 px-3 py-1.5 rounded-full text-sm"
+                  >
                     <Hash size={12} className="mr-1" />
                     {tag}
                     <button
@@ -190,15 +210,18 @@ const NoteModal = ({
               </div>
             )}
           </div>
-          
+
           {availableFiles.length > 0 && (
             <div className="mb-5">
               <label className="block text-sm font-medium text-adaptive mb-2">
                 Related Files
               </label>
               <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-gray-50 dark:bg-gray-800/50">
-                {availableFiles.map(file => (
-                  <div key={file.id} className="flex items-center py-1.5 px-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                {availableFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center py-1.5 px-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  >
                     <input
                       type="checkbox"
                       id={`file-${file.id}`}
@@ -207,7 +230,7 @@ const NoteModal = ({
                       className="mr-2.5 h-4 w-4 accent-blue-500"
                       disabled={isCreating}
                     />
-                    <label 
+                    <label
                       htmlFor={`file-${file.id}`}
                       className="text-sm text-adaptive cursor-pointer truncate flex-1"
                     >
@@ -218,7 +241,7 @@ const NoteModal = ({
               </div>
             </div>
           )}
-          
+
           <div className="flex justify-end mt-6 gap-3">
             <button
               type="button"
@@ -239,7 +262,7 @@ const NoteModal = ({
                   Creating...
                 </>
               ) : (
-                'Create Note'
+                "Create Note"
               )}
             </button>
           </div>
@@ -249,4 +272,4 @@ const NoteModal = ({
   );
 };
 
-export default NoteModal; 
+export default NoteModal;

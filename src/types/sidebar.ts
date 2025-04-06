@@ -21,11 +21,11 @@ export const SidebarPropsSchema = z.object({
   selectedWorkspaceId: z.string().nullable(),
   onSelectWorkspace: z.function().args(z.string().nullable()).returns(z.void()),
   onWorkspacesUpdated: z.function().args().returns(z.void()).optional(),
-  
+
   // Notes panel toggle functionality
   toggleNotesPanel: z.function().args().returns(z.void()).optional(),
   isNotesPanelExpanded: z.boolean().optional(),
-  
+
   // Sandbox toggle functionality
   toggleSandbox: z.function().args().returns(z.void()).optional(),
   isSandboxExpanded: z.boolean().optional(),
@@ -82,10 +82,22 @@ export const WorkspaceItemPropsSchema = z.object({
   isMobile: z.boolean(),
   isSelected: z.boolean(),
   expandedWorkspaces: z.custom<Set<string>>(),
-  handleToggleWorkspace: z.function().args(z.string(), z.custom<React.MouseEvent>()).returns(z.void()),
-  handleSelectWorkspace: z.function().args(z.string().nullable()).returns(z.void()),
-  handleAddSubworkspace: z.function().args(z.string(), z.custom<React.MouseEvent>()).returns(z.void()),
-  handleDeleteClick: z.function().args(z.string(), z.custom<React.MouseEvent>()).returns(z.promise(z.void())),
+  handleToggleWorkspace: z
+    .function()
+    .args(z.string(), z.custom<React.MouseEvent>())
+    .returns(z.void()),
+  handleSelectWorkspace: z
+    .function()
+    .args(z.string().nullable())
+    .returns(z.void()),
+  handleAddSubworkspace: z
+    .function()
+    .args(z.string(), z.custom<React.MouseEvent>())
+    .returns(z.void()),
+  handleDeleteClick: z
+    .function()
+    .args(z.string(), z.custom<React.MouseEvent>())
+    .returns(z.promise(z.void())),
 });
 
 // Type derived from the schema
@@ -112,9 +124,21 @@ export const ChatSessionItemPropsSchema = z.object({
   session: z.custom<ChatSession>(),
   isMobile: z.boolean(),
   isActive: z.boolean(),
-  setCurrentChatSession: z.function().args(z.custom<ChatSession>()).returns(z.void()).optional(),
-  handleEditChatTitle: z.function().args(z.custom<ChatSession>()).returns(z.void()).optional(),
-  confirmDeleteSession: z.function().args(z.string()).returns(z.void()).optional(),
+  setCurrentChatSession: z
+    .function()
+    .args(z.custom<ChatSession>())
+    .returns(z.void())
+    .optional(),
+  handleEditChatTitle: z
+    .function()
+    .args(z.custom<ChatSession>())
+    .returns(z.void())
+    .optional(),
+  confirmDeleteSession: z
+    .function()
+    .args(z.string())
+    .returns(z.void())
+    .optional(),
 });
 
 // Type derived from the schema

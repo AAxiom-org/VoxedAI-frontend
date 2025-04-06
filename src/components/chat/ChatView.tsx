@@ -1,16 +1,36 @@
 import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
-import { ClipboardIcon, CheckIcon, ChevronDown, BrainCircuit, Search, File, Code, Terminal, AlertCircle, RefreshCw, ChevronRight } from "lucide-react";
+import {
+  ClipboardIcon,
+  CheckIcon,
+  ChevronDown,
+  BrainCircuit,
+  Search,
+  File,
+  Code,
+  Terminal,
+  AlertCircle,
+  RefreshCw,
+  ChevronRight,
+} from "lucide-react";
 import { ChatMessage, ReasoningData } from "../../types/chat";
-import { type Model, DEFAULT_MODEL, MODELS, MODEL_DISPLAY_NAMES } from "../../types/models";
+import {
+  type Model,
+  DEFAULT_MODEL,
+  MODELS,
+  MODEL_DISPLAY_NAMES,
+} from "../../types/models";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark, oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import {
+  oneDark,
+  oneLight,
+} from "react-syntax-highlighter/dist/cjs/styles/prism";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import Tooltip from "../common/Tooltip";
-import 'katex/dist/katex.min.css';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
+import "katex/dist/katex.min.css";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 // TODO: migrate to use MarkdownRenderer component
 
@@ -42,10 +62,10 @@ function useDarkMode() {
   useEffect(() => {
     // Check initial color scheme
     const checkColorScheme = () => {
-      const isDark = 
-        document.documentElement.classList.contains('force-dark') || 
-        (document.documentElement.classList.contains('color-scheme-adaptive') && 
-         window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const isDark =
+        document.documentElement.classList.contains("force-dark") ||
+        (document.documentElement.classList.contains("color-scheme-adaptive") &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches);
       setIsDarkMode(isDark);
     };
 
@@ -53,19 +73,19 @@ function useDarkMode() {
     checkColorScheme();
 
     // Set up listeners for theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => checkColorScheme();
-    mediaQuery.addEventListener('change', handleChange);
+    mediaQuery.addEventListener("change", handleChange);
 
     // Observer for class changes on html element
     const observer = new MutationObserver(checkColorScheme);
-    observer.observe(document.documentElement, { 
-      attributes: true, 
-      attributeFilter: ['class'] 
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
     });
 
     return () => {
-      mediaQuery.removeEventListener('change', handleChange);
+      mediaQuery.removeEventListener("change", handleChange);
       observer.disconnect();
     };
   }, []);
@@ -105,18 +125,18 @@ const CodeBlock = ({
   isCopied: boolean;
 }) => {
   const language = className ? className.replace(/language-/, "") : "";
-  const codeContent = typeof children === 'string' ? children : '';
+  const codeContent = typeof children === "string" ? children : "";
   const isDarkMode = useDarkMode();
 
   return (
     <div className="relative group rounded-lg overflow-hidden">
       <SyntaxHighlighter
         style={isDarkMode ? oneDark : oneLight}
-        language={language || 'text'}
+        language={language || "text"}
         PreTag="div"
         className="!rounded-lg !m-0"
         customStyle={{
-          borderRadius: '0.5rem',
+          borderRadius: "0.5rem",
           margin: 0,
         }}
       >
@@ -127,7 +147,7 @@ const CodeBlock = ({
         className="absolute top-2 right-2 bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_20%,transparent)] px-2 py-1 rounded text-sm hover:opacity-80 transition-opacity opacity-0 group-hover:opacity-100"
         aria-label="Copy code"
       >
-        {isCopied ? 'Copied!' : 'Copy'}
+        {isCopied ? "Copied!" : "Copy"}
       </button>
     </div>
   );
@@ -136,20 +156,20 @@ const CodeBlock = ({
 // Icon mapping for different tool/event types
 const getToolIcon = (eventType: string) => {
   switch (eventType) {
-    case 'file_edit_start':
-    case 'file_edit_complete':
-    case 'file_lookup_start':
-    case 'file_found':
+    case "file_edit_start":
+    case "file_edit_complete":
+    case "file_lookup_start":
+    case "file_found":
       return <File className="h-4 w-4" />;
-    case 'tool_execution_start':
-    case 'tool_complete':
-    case 'toolshed_start':
+    case "tool_execution_start":
+    case "tool_complete":
+    case "toolshed_start":
       return <Terminal className="h-4 w-4" />;
-    case 'rag_complete':
+    case "rag_complete":
       return <Search className="h-4 w-4" />;
-    case 'decision':
+    case "decision":
       return <BrainCircuit className="h-4 w-4" />;
-    case 'error':
+    case "error":
       return <AlertCircle className="h-4 w-4" />;
     default:
       return <Code className="h-4 w-4" />;
@@ -158,32 +178,52 @@ const getToolIcon = (eventType: string) => {
 
 // Status badge for different event types
 const getStatusBadge = (eventType: string) => {
-  if (eventType.includes('complete') || eventType.includes('found')) {
-    return <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-2 py-0.5 rounded-full">Completed</span>;
-  } else if (eventType.includes('start')) {
-    return <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full">In Progress</span>;
-  } else if (eventType === 'error') {
-    return <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs px-2 py-0.5 rounded-full">Error</span>;
+  if (eventType.includes("complete") || eventType.includes("found")) {
+    return (
+      <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-2 py-0.5 rounded-full">
+        Completed
+      </span>
+    );
+  } else if (eventType.includes("start")) {
+    return (
+      <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full">
+        In Progress
+      </span>
+    );
+  } else if (eventType === "error") {
+    return (
+      <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs px-2 py-0.5 rounded-full">
+        Error
+      </span>
+    );
   } else {
-    return <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full">Info</span>;
+    return (
+      <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full">
+        Info
+      </span>
+    );
   }
 };
 
 // Agent timeline component to display workflow
 const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
-  const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
-  const [currentTransitionIndex, setCurrentTransitionIndex] = useState<number | null>(null);
+  const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [currentTransitionIndex, setCurrentTransitionIndex] = useState<
+    number | null
+  >(null);
 
   const toggleEvent = (index: number) => {
-    setExpandedEvents(prev => ({
+    setExpandedEvents((prev) => ({
       ...prev,
-      [index]: !prev[index]
+      [index]: !prev[index],
     }));
   };
 
   // Safety check to ensure events is an array
   const safeEvents = Array.isArray(events) ? events : [];
-  
+
   // Check for the last event to determine if we're still processing actions
   useEffect(() => {
     if (safeEvents.length > 0) {
@@ -207,72 +247,95 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
       animation: pulse 1.5s infinite ease-in-out;
     }
   `;
-  
+
   // Get the appropriate transition message based on event types
-  const getTransitionMessage = (currentEvent: AgentEvent, nextEvent: AgentEvent, index: number): JSX.Element | null => {
+  const getTransitionMessage = (
+    currentEvent: AgentEvent,
+    nextEvent: AgentEvent,
+    index: number,
+  ): JSX.Element | null => {
     if (!currentEvent || !nextEvent) return null;
 
     // Should only show a transition if this is the current transition point
     const isCurrentTransition = index === currentTransitionIndex;
-    
+
     // Only show transitions that make sense
     let content: JSX.Element | null = null;
 
     // Decision to tool transition
-    if (currentEvent.event_type === 'decision' && 
-        currentEvent.decision === 'tool' && 
-        (nextEvent.event_type === 'tool_execution_start' || 
-         nextEvent.event_type === 'file_edit_start' || 
-         nextEvent.event_type === 'file_lookup_start')) {
+    if (
+      currentEvent.event_type === "decision" &&
+      currentEvent.decision === "tool" &&
+      (nextEvent.event_type === "tool_execution_start" ||
+        nextEvent.event_type === "file_edit_start" ||
+        nextEvent.event_type === "file_lookup_start")
+    ) {
       content = (
-        <div className={`ml-6 -mb-2 mt-1 text-xs text-purple-600 dark:text-purple-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+        <div
+          className={`ml-6 -mb-2 mt-1 text-xs text-purple-600 dark:text-purple-400 flex items-center ${isCurrentTransition ? "custom-pulse" : ""}`}
+        >
           <span className="mr-1">💡</span> Selecting the right tool...
         </div>
       );
     }
-    
+
     // File interactions
-    else if (currentEvent.event_type === 'file_edit_start' && nextEvent.event_type === 'file_edit_complete') {
+    else if (
+      currentEvent.event_type === "file_edit_start" &&
+      nextEvent.event_type === "file_edit_complete"
+    ) {
       content = (
-        <div className={`ml-6 -mb-2 mt-1 text-xs text-green-600 dark:text-green-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+        <div
+          className={`ml-6 -mb-2 mt-1 text-xs text-green-600 dark:text-green-400 flex items-center ${isCurrentTransition ? "custom-pulse" : ""}`}
+        >
           <span className="mr-1">✏️</span> Making changes to the file...
         </div>
       );
-    }
-    
-    else if (currentEvent.event_type === 'file_lookup_start' && nextEvent.event_type === 'file_found') {
+    } else if (
+      currentEvent.event_type === "file_lookup_start" &&
+      nextEvent.event_type === "file_found"
+    ) {
       content = (
-        <div className={`ml-6 -mb-2 mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+        <div
+          className={`ml-6 -mb-2 mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center ${isCurrentTransition ? "custom-pulse" : ""}`}
+        >
           <span className="mr-1">🔍</span> Searching for the right file...
         </div>
       );
     }
-    
+
     // Tool execution
-    else if (currentEvent.event_type === 'tool_execution_start' && nextEvent.event_type === 'tool_complete') {
+    else if (
+      currentEvent.event_type === "tool_execution_start" &&
+      nextEvent.event_type === "tool_complete"
+    ) {
       content = (
-        <div className={`ml-6 -mb-2 mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+        <div
+          className={`ml-6 -mb-2 mt-1 text-xs text-orange-600 dark:text-orange-400 flex items-center ${isCurrentTransition ? "custom-pulse" : ""}`}
+        >
           <span className="mr-1">⚙️</span> Running the tool...
         </div>
       );
     }
-    
+
     // Decision to finish transition
-    else if (currentEvent.event_type !== 'decision' && 
-        nextEvent.event_type === 'decision' && 
-        nextEvent.decision === 'finish') {
+    else if (
+      currentEvent.event_type !== "decision" &&
+      nextEvent.event_type === "decision" &&
+      nextEvent.decision === "finish"
+    ) {
       content = (
-        <div className={`ml-6 -mb-2 mt-1 text-xs text-gray-600 dark:text-gray-400 flex items-center ${isCurrentTransition ? 'custom-pulse' : ''}`}>
+        <div
+          className={`ml-6 -mb-2 mt-1 text-xs text-gray-600 dark:text-gray-400 flex items-center ${isCurrentTransition ? "custom-pulse" : ""}`}
+        >
           <span className="mr-1">✅</span> Finalizing the answer...
         </div>
       );
     }
-    
+
     // Only show the content if it's relevant to the current state
     return isCurrentTransition && content ? (
-      <div className="transition-opacity duration-300">
-        {content}
-      </div>
+      <div className="transition-opacity duration-300">{content}</div>
     ) : null;
   };
 
@@ -283,7 +346,9 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
   return (
     <div className="mt-4 space-y-2">
       <style>{transitionAnimations}</style>
-      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Agent Workflow</h4>
+      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        Agent Workflow
+      </h4>
       <div className="relative border-l-2 border-gray-200 dark:border-gray-700 pl-4 space-y-4">
         {safeEvents.map((event, index) => (
           <React.Fragment key={index}>
@@ -292,15 +357,16 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
               <div className="absolute -left-[21px] mt-1.5 h-4 w-4 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary"></div>
               </div>
-              
+
               {/* Event card */}
-              <div className={`
+              <div
+                className={`
                 p-3 rounded-lg border border-gray-200 dark:border-gray-700
                 hover:border-gray-300 dark:hover:border-gray-600 
                 transition-all cursor-pointer
-                ${expandedEvents[index] ? 'bg-gray-50 dark:bg-gray-800/60' : 'bg-white dark:bg-gray-900'}
+                ${expandedEvents[index] ? "bg-gray-50 dark:bg-gray-800/60" : "bg-white dark:bg-gray-900"}
               `}
-              onClick={() => toggleEvent(index)}
+                onClick={() => toggleEvent(index)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -308,41 +374,64 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
                       {getToolIcon(event.event_type)}
                     </div>
                     <span className="font-medium text-sm">
-                      {event.event_type === 'tool_selected' 
-                        ? `Selected Tool: ${event.tool}` 
-                        : event.event_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                      {event.event_type === "tool_selected"
+                        ? `Selected Tool: ${event.tool}`
+                        : event.event_type
+                            .split("_")
+                            .map(
+                              (word) =>
+                                word.charAt(0).toUpperCase() + word.slice(1),
+                            )
+                            .join(" ")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusBadge(event.event_type)}
-                    <ChevronRight 
-                      className={`h-4 w-4 text-gray-400 transition-transform ${expandedEvents[index] ? 'rotate-90' : ''}`} 
+                    <ChevronRight
+                      className={`h-4 w-4 text-gray-400 transition-transform ${expandedEvents[index] ? "rotate-90" : ""}`}
                     />
                   </div>
                 </div>
-                
+
                 {expandedEvents[index] && (
                   <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-2">
                     {/* Tool selection details with parameters and reasoning */}
-                    {event.event_type === 'tool_selected' && (
+                    {event.event_type === "tool_selected" && (
                       <>
-                        {event.parameters && Object.keys(event.parameters).length > 0 && (
-                          <div className="mb-2">
-                            <h5 className="font-medium text-gray-700 dark:text-gray-300">Parameters:</h5>
-                            <div className="pl-3 mt-1 space-y-1">
-                              {Object.entries(event.parameters).map(([key, value]) => (
-                                <div key={key} className="font-mono text-xs">
-                                  <span className="text-blue-600 dark:text-blue-400">{key}:</span> 
-                                  <span className="text-gray-800 dark:text-gray-200"> {typeof value === 'string' ? value : JSON.stringify(value)}</span>
-                                </div>
-                              ))}
+                        {event.parameters &&
+                          Object.keys(event.parameters).length > 0 && (
+                            <div className="mb-2">
+                              <h5 className="font-medium text-gray-700 dark:text-gray-300">
+                                Parameters:
+                              </h5>
+                              <div className="pl-3 mt-1 space-y-1">
+                                {Object.entries(event.parameters).map(
+                                  ([key, value]) => (
+                                    <div
+                                      key={key}
+                                      className="font-mono text-xs"
+                                    >
+                                      <span className="text-blue-600 dark:text-blue-400">
+                                        {key}:
+                                      </span>
+                                      <span className="text-gray-800 dark:text-gray-200">
+                                        {" "}
+                                        {typeof value === "string"
+                                          ? value
+                                          : JSON.stringify(value)}
+                                      </span>
+                                    </div>
+                                  ),
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        
+                          )}
+
                         {event.thinking && (
                           <div className="mt-2">
-                            <h5 className="font-medium text-gray-700 dark:text-gray-300">Reasoning:</h5>
+                            <h5 className="font-medium text-gray-700 dark:text-gray-300">
+                              Reasoning:
+                            </h5>
                             <div className="pl-3 mt-1 whitespace-pre-wrap text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
                               {event.thinking}
                             </div>
@@ -350,25 +439,33 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
                         )}
                       </>
                     )}
-                    
+
                     {/* Regular event details */}
                     {event.data && <p>{event.data}</p>}
                     {event.message && <p>{event.message}</p>}
                     {event.decision && <p>Decision: {event.decision}</p>}
                     {event.file_id && <p>File ID: {event.file_id}</p>}
-                    {(event.event_type !== 'tool_selected' && event.tool) && <p>Tool: {event.tool}</p>}
-                    
-                    {!event.data && !event.message && !event.decision && !event.file_id && 
-                     !event.tool && !event.thinking && !event.parameters && (
-                      <p>No additional details available</p>
+                    {event.event_type !== "tool_selected" && event.tool && (
+                      <p>Tool: {event.tool}</p>
                     )}
+
+                    {!event.data &&
+                      !event.message &&
+                      !event.decision &&
+                      !event.file_id &&
+                      !event.tool &&
+                      !event.thinking &&
+                      !event.parameters && (
+                        <p>No additional details available</p>
+                      )}
                   </div>
                 )}
               </div>
             </div>
-            
+
             {/* Show transition message if appropriate */}
-            {index < safeEvents.length - 1 && getTransitionMessage(event, safeEvents[index + 1], index)}
+            {index < safeEvents.length - 1 &&
+              getTransitionMessage(event, safeEvents[index + 1], index)}
           </React.Fragment>
         ))}
       </div>
@@ -400,18 +497,27 @@ const ChatView = ({
   const [endSpacerHeight, setEndSpacerHeight] = useState(64);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-  
+
   // Map to store reasoning data for each message
-  const [reasoningData, setReasoningData] = useState<Map<string, ReasoningData>>(new Map());
+  const [reasoningData, setReasoningData] = useState<
+    Map<string, ReasoningData>
+  >(new Map());
   // Map to store agent events for each message
-  const [messageWorkflows, setMessageWorkflows] = useState<Map<string, AgentEvent[]>> (new Map());
+  const [messageWorkflows, setMessageWorkflows] = useState<
+    Map<string, AgentEvent[]>
+  >(new Map());
   // For streaming message reasoning
   const [streamingReasoning, setStreamingReasoning] = useState<string>("");
-  const [showStreamingReasoning, setShowStreamingReasoning] = useState<boolean>(false);
-  const [streamingAgentEvents, setStreamingAgentEvents] = useState<AgentEvent[]>([]);
+  const [showStreamingReasoning, setShowStreamingReasoning] =
+    useState<boolean>(false);
+  const [streamingAgentEvents, setStreamingAgentEvents] = useState<
+    AgentEvent[]
+  >([]);
   const [showAgentEvents, setShowAgentEvents] = useState<boolean>(false);
   // Currently selected message for displaying workflow
-  const [activeWorkflowMessageId, setActiveWorkflowMessageId] = useState<string | null>(null);
+  const [activeWorkflowMessageId, setActiveWorkflowMessageId] = useState<
+    string | null
+  >(null);
 
   // CSS for the pulse animation
   const pulseAnimation = `
@@ -433,7 +539,7 @@ const ChatView = ({
     }
   `;
 
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior });
     }
@@ -442,17 +548,17 @@ const ChatView = ({
   // Calculate the appropriate spacing based on content
   const calculateSpacerHeight = () => {
     if (!messageContainerRef.current || !messagesEndRef.current) return;
-    
+
     const containerHeight = messageContainerRef.current.clientHeight;
     const messagesEndHeight = messagesEndRef.current.clientHeight || 0;
     const scrollHeight = messageContainerRef.current.scrollHeight;
     const contentHeight = scrollHeight - messagesEndHeight;
     const chatInputHeight = simplified ? 64 : 42; // Increase height buffer for simplified mode
     const bufferSpace = simplified ? 32 : 24; // Increase buffer space for simplified mode
-    
+
     // For small screens, keep it minimal
     const isMobileDevice = window.innerWidth < 768;
-    
+
     // Calculate optimal height
     let newHeight;
     if (contentHeight > containerHeight) {
@@ -460,116 +566,128 @@ const ChatView = ({
       newHeight = chatInputHeight + bufferSpace;
     } else {
       // Content fits, use larger spacing on desktop, smaller on mobile
-      newHeight = isMobileDevice ? 64 : (simplified ? 120 : 96);
+      newHeight = isMobileDevice ? 64 : simplified ? 120 : 96;
     }
-    
+
     setEndSpacerHeight(newHeight);
   };
 
   // Initialize scroll position and setup observers when component mounts
   useEffect(() => {
     // Only auto-scroll on first load
-    scrollToBottom('auto');
+    scrollToBottom("auto");
     calculateSpacerHeight();
-    
+
     // Set up resize observer to recalculate heights when window resizes
     const resizeObserver = new ResizeObserver(() => {
       calculateSpacerHeight();
     });
-    
+
     // Add scroll event listener to update spacer height during scrolling
     const handleScroll = () => {
       calculateSpacerHeight();
     };
-    
+
     if (messageContainerRef.current) {
       resizeObserver.observe(messageContainerRef.current);
-      messageContainerRef.current.addEventListener('scroll', handleScroll, { passive: true });
+      messageContainerRef.current.addEventListener("scroll", handleScroll, {
+        passive: true,
+      });
     }
-    
+
     return () => {
       resizeObserver.disconnect();
-      messageContainerRef.current?.removeEventListener('scroll', handleScroll);
+      messageContainerRef.current?.removeEventListener("scroll", handleScroll);
     };
   }, []);
-  
+
   // Extract reasoning content from message text
-  const extractReasoning = (content: string): { text: string, reasoning: string | null } => {
+  const extractReasoning = (
+    content: string,
+  ): { text: string; reasoning: string | null } => {
     const reasoningRegex = /<!--reasoning:(.*?)-->/s;
     const match = content.match(reasoningRegex);
-    
+
     if (match && match[1]) {
       // Found reasoning content
       console.log("Found reasoning content - length:", match[1].length);
-      
+
       // Create the cleaned text by removing the reasoning comment
-      const cleanedText = content.replace(reasoningRegex, '');
-      console.log("Removed reasoning comment - text length before:", content.length, "after:", cleanedText.length);
-      
+      const cleanedText = content.replace(reasoningRegex, "");
+      console.log(
+        "Removed reasoning comment - text length before:",
+        content.length,
+        "after:",
+        cleanedText.length,
+      );
+
       // Return the content without reasoning comment and the reasoning content
       return {
         text: cleanedText,
-        reasoning: match[1].trim()
+        reasoning: match[1].trim(),
       };
     }
-    
+
     return { text: content, reasoning: null };
   };
-  
+
   // Extract agent events from message text
-  const extractAgentEvents = (content: string): { text: string, events: AgentEvent[] | null } => {
+  const extractAgentEvents = (
+    content: string,
+  ): { text: string; events: AgentEvent[] | null } => {
     const eventsRegex = /<!--agent_events:(.*?)-->/s;
     const match = content.match(eventsRegex);
-    
+
     if (match && match[1]) {
       try {
         // Found agent events
         console.log("Found agent events");
-        
+
         // Parse the JSON array
         const events = JSON.parse(match[1]);
-        
+
         // Create the cleaned text by removing the events comment
-        const cleanedText = content.replace(eventsRegex, '');
-        
+        const cleanedText = content.replace(eventsRegex, "");
+
         // Return the content without events comment and the parsed events
         return {
           text: cleanedText,
-          events: Array.isArray(events) ? events : []
+          events: Array.isArray(events) ? events : [],
         };
       } catch (err) {
         console.error("Error parsing agent events:", err);
         return { text: content, events: null };
       }
     }
-    
+
     return { text: content, events: null };
   };
-  
+
   // Process streaming content and check for agent events and reasoning
   useEffect(() => {
     if (isStreaming && streamingContent) {
       // Extract both reasoning and agent events
-      const { text: textWithoutReasoning, reasoning } = extractReasoning(streamingContent);
+      const { text: textWithoutReasoning, reasoning } =
+        extractReasoning(streamingContent);
       const { events } = extractAgentEvents(textWithoutReasoning);
-      
+
       // If reasoning exists in the streaming content
       if (reasoning) {
         setStreamingReasoning(reasoning);
       }
-      
+
       // If agent events exist
       if (events && events.length > 0) {
         setStreamingAgentEvents(events);
         // Automatically show agent events when they're available
         setShowAgentEvents(true);
       }
-      
+
       // Calculate spacer height
       calculateSpacerHeight();
     }
   }, [isStreaming, streamingContent]);
-  
+
   // Handle streaming completion - add streaming reasoning and agent events to the messages
   useEffect(() => {
     if (!isStreaming && messages.length > 0) {
@@ -577,27 +695,33 @@ const ChatView = ({
       if (!lastMessage.is_user) {
         // When streaming completes, store reasoning for the message if available
         if (streamingReasoning) {
-          console.log("Streaming completed - storing reasoning for message:", lastMessage.id.substring(0, 8));
-          
+          console.log(
+            "Streaming completed - storing reasoning for message:",
+            lastMessage.id.substring(0, 8),
+          );
+
           // Add the reasoning data to the map (overwrite if exists)
-          setReasoningData(prev => {
+          setReasoningData((prev) => {
             const newMap = new Map(prev);
             // Set reasoning to be hidden by default
-            newMap.set(lastMessage.id, { 
-              content: streamingReasoning, 
-              visible: false 
+            newMap.set(lastMessage.id, {
+              content: streamingReasoning,
+              visible: false,
             });
             return newMap;
           });
-          
+
           // Clear streaming reasoning
           setStreamingReasoning("");
         }
-        
+
         // Set the agent events for the message if available
         if (streamingAgentEvents.length > 0) {
-          console.log("Streaming completed - storing agent events for message:", lastMessage.id.substring(0, 8));
-          setMessageWorkflows(prev => {
+          console.log(
+            "Streaming completed - storing agent events for message:",
+            lastMessage.id.substring(0, 8),
+          );
+          setMessageWorkflows((prev) => {
             const newMap = new Map(prev);
             newMap.set(lastMessage.id, streamingAgentEvents);
             return newMap;
@@ -608,7 +732,7 @@ const ChatView = ({
       }
     }
   }, [isStreaming, messages, streamingReasoning, streamingAgentEvents]);
-  
+
   // Scroll to bottom when a new message is added (user submits a message)
   useEffect(() => {
     if (messages.length > lastMessageCount) {
@@ -621,84 +745,98 @@ const ChatView = ({
       calculateSpacerHeight();
     }
   }, [messages.length, lastMessageCount, isStreaming]);
-  
+
   // Just update the scroll indicator when streaming completes
   useEffect(() => {
     if (!isStreaming && lastMessageCount < messages.length) {
       calculateSpacerHeight();
     }
   }, [isStreaming, messages.length, lastMessageCount]);
-  
+
   // Update reasoning data for messages when they're added or changed
   useEffect(() => {
     // Create a local copy to track modified messages
     let hasModifiedMessages = false;
-    
+
     // Process messages to extract reasoning
-    messages.forEach(message => {
+    messages.forEach((message) => {
       if (!message.is_user) {
         // First check if the message has reasoning data directly from the database
-        if (message.reasoning && typeof message.reasoning === 'object' && 'content' in message.reasoning) {
+        if (
+          message.reasoning &&
+          typeof message.reasoning === "object" &&
+          "content" in message.reasoning
+        ) {
           // Set reasoning data from database field
           const reasoningContent = message.reasoning.content as string;
           if (reasoningContent) {
-            setReasoningData(prev => {
+            setReasoningData((prev) => {
               const newMap = new Map(prev);
               // If we already have reasoning data, preserve visibility state
               const existingData = prev.get(message.id);
-              newMap.set(message.id, { 
-                content: reasoningContent, 
-                visible: existingData ? existingData.visible : false // Default to hidden for new items
+              newMap.set(message.id, {
+                content: reasoningContent,
+                visible: existingData ? existingData.visible : false, // Default to hidden for new items
               });
               return newMap;
             });
-            console.log(`Set reasoning data from database for ${message.id.substring(0, 8)}`);
+            console.log(
+              `Set reasoning data from database for ${message.id.substring(0, 8)}`,
+            );
           }
-        } 
+        }
         // Then check content for embedded reasoning (for backward compatibility)
         else {
           // Check if this message contains reasoning
           const { text, reasoning } = extractReasoning(message.content);
-          
+
           if (reasoning) {
             // Store reasoning data for this message (or update if already exists)
-            setReasoningData(prev => {
+            setReasoningData((prev) => {
               const newMap = new Map(prev);
               // If we already have reasoning data, preserve visibility state
               const existingData = prev.get(message.id);
-              newMap.set(message.id, { 
-                content: reasoning, 
-                visible: existingData ? existingData.visible : false // Default to hidden for new items
+              newMap.set(message.id, {
+                content: reasoning,
+                visible: existingData ? existingData.visible : false, // Default to hidden for new items
               });
               return newMap;
             });
-            
+
             // Update the message content to remove the reasoning comment
             if (message.content !== text) {
               message.content = text;
               hasModifiedMessages = true;
-              console.log(`Modified message ${message.id.substring(0, 8)} to remove reasoning comment`);
+              console.log(
+                `Modified message ${message.id.substring(0, 8)} to remove reasoning comment`,
+              );
             }
           }
         }
       }
     });
-    
+
     // Log summary
     if (hasModifiedMessages) {
-      console.log("Completed processing messages - removed reasoning tags from content");
+      console.log(
+        "Completed processing messages - removed reasoning tags from content",
+      );
     }
   }, [messages]);
-  
+
   // Update agent workflow data for messages when they're added or changed
   useEffect(() => {
     // Process messages to extract agent events
-    messages.forEach(message => {
+    messages.forEach((message) => {
       if (!message.is_user) {
         // First check if the message has workflow data directly from the database
-        if (message.workflow && Array.isArray(message.workflow) && message.workflow.length > 0) {
+        if (
+          message.workflow &&
+          Array.isArray(message.workflow) &&
+          message.workflow.length > 0
+        ) {
           // Ensure the workflow data conforms to AgentEvent type
-          const typedWorkflow = message.workflow.map(event => {
+          const typedWorkflow = message.workflow.map((event) => {
             // Ensure each event has at least the required fields for AgentEvent
             return {
               type: event.type || "agent_event",
@@ -707,60 +845,67 @@ const ChatView = ({
               ...(event.file_id && { file_id: event.file_id }),
               ...(event.tool && { tool: event.tool }),
               ...(event.message && { message: event.message }),
-              ...(event.data && { data: event.data })
+              ...(event.data && { data: event.data }),
             } as AgentEvent;
           });
-          
-          setMessageWorkflows(prev => {
+
+          setMessageWorkflows((prev) => {
             const newMap = new Map(prev);
             newMap.set(message.id, typedWorkflow);
             return newMap;
           });
-          console.log(`Set workflow data from message object for ${message.id.substring(0, 8)}`);
-        } 
+          console.log(
+            `Set workflow data from message object for ${message.id.substring(0, 8)}`,
+          );
+        }
         // Then check content for embedded agent events (for backward compatibility)
         else {
           // Check if this message contains agent events in content
           const { text, events } = extractAgentEvents(message.content);
-          
+
           if (events && events.length > 0) {
             // Store agent events for this message
-            setMessageWorkflows(prev => {
+            setMessageWorkflows((prev) => {
               const newMap = new Map(prev);
               newMap.set(message.id, events);
               return newMap;
             });
-            
+
             // Update the message content to remove the events comment
             if (message.content !== text) {
               message.content = text;
-              console.log(`Modified message ${message.id.substring(0, 8)} to remove agent events comment`);
+              console.log(
+                `Modified message ${message.id.substring(0, 8)} to remove agent events comment`,
+              );
             }
           }
         }
       }
     });
   }, [messages]);
-  
+
   // Toggle reasoning visibility
   const toggleReasoning = (messageId: string) => {
-    setReasoningData(prev => {
+    setReasoningData((prev) => {
       const newMap = new Map(prev);
       const messageData = newMap.get(messageId);
-      
+
       if (messageData) {
-        newMap.set(messageId, { ...messageData, visible: !messageData.visible });
+        newMap.set(messageId, {
+          ...messageData,
+          visible: !messageData.visible,
+        });
       }
-      
+
       return newMap;
     });
   };
-  
+
   // Toggle streaming reasoning visibility
   const toggleStreamingReasoning = () => {
-    setShowStreamingReasoning(prev => !prev);
+    setShowStreamingReasoning((prev) => !prev);
   };
-  
+
   // Toggle agent events visibility for a specific message
   const toggleAgentEvents = (messageId?: string) => {
     // If messageId is provided, toggle for that specific message
@@ -776,22 +921,22 @@ const ChatView = ({
       }
     } else {
       // Toggle streaming events visibility
-      setShowAgentEvents(prev => !prev);
+      setShowAgentEvents((prev) => !prev);
     }
   };
-  
+
   // Initialize the streaming reasoning visibility state to be hidden by default
   useEffect(() => {
     setShowStreamingReasoning(false);
   }, []);
-  
+
   // Toggle the model dropdown
   const toggleModelDropdown = () => {
     if (!isStreamingState) {
       setIsModelDropdownOpen(!isModelDropdownOpen);
     }
   };
-  
+
   // Handle model selection
   const handleModelSelect = (model: Model) => {
     if (setSelectedModel) {
@@ -815,33 +960,48 @@ const ChatView = ({
     if (!events || events.length === 0) {
       return false;
     }
-    
+
     // Check if the first event is a decision event with "finish"
     const firstEvent = events[0];
-    return firstEvent.event_type === "decision" && 
-           firstEvent.decision?.toLowerCase() === "finish";
+    return (
+      firstEvent.event_type === "decision" &&
+      firstEvent.decision?.toLowerCase() === "finish"
+    );
   };
 
   return (
-    <div className={`flex flex-col h-full ${simplified ? 'relative pb-4' : ''}`}>
+    <div
+      className={`flex flex-col h-full ${simplified ? "relative pb-4" : ""}`}
+    >
       {/* Style tag for custom animations */}
       <style>{pulseAnimation}</style>
-    
+
       {/* Back navigation */}
-      <button 
+      <button
         onClick={onBackClick}
         className="pl-4 pt-3 pb-0 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-sm flex items-center"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-            <path d="M15 18l-6-6 6-6" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="mr-1"
+        >
+          <path d="M15 18l-6-6 6-6" />
         </svg>
         <span className="underline">Back to all chats</span>
       </button>
-      
+
       {/* Message display area */}
-      <div 
+      <div
         ref={messageContainerRef}
-        className={`flex-1 overflow-y-auto ${simplified ? 'overflow-x-hidden' : ''} pt-4 px-4 ${simplified ? '' : 'pb-24'} relative scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent ${simplified ? 'max-h-[calc(100%-120px)]' : ''}`}
+        className={`flex-1 overflow-y-auto ${simplified ? "overflow-x-hidden" : ""} pt-4 px-4 ${simplified ? "" : "pb-24"} relative scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent ${simplified ? "max-h-[calc(100%-120px)]" : ""}`}
       >
         <div className="max-w-3xl mx-auto">
           {messages.map((message) => (
@@ -860,24 +1020,30 @@ const ChatView = ({
                     rehypePlugins={[rehypeRaw, rehypeKatex]}
                     components={{
                       code: (props) => {
-                        const { inline, className, children, ...rest } = props as CodeComponentProps;
-                        const match = /language-(\w+)/.exec(className || '');
-                        
+                        const { inline, className, children, ...rest } =
+                          props as CodeComponentProps;
+                        const match = /language-(\w+)/.exec(className || "");
+
                         if (!inline && match) {
                           return (
                             <CodeBlock
                               className={className}
                               onCopy={handleCopyCode}
-                              isCopied={copiedText === (typeof children === 'string' ? children : '')}
+                              isCopied={
+                                copiedText ===
+                                (typeof children === "string" ? children : "")
+                              }
                             >
-                              {typeof children === 'string' ? children.replace(/\n$/, '') : children}
+                              {typeof children === "string"
+                                ? children.replace(/\n$/, "")
+                                : children}
                             </CodeBlock>
                           );
                         }
-                        
+
                         return (
-                          <code 
-                            className={`${inline ? 'bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_10%,transparent)] px-1.5 py-0.5 rounded' : ''} ${className || ''}`}
+                          <code
+                            className={`${inline ? "bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_10%,transparent)] px-1.5 py-0.5 rounded" : ""} ${className || ""}`}
                             {...rest}
                           >
                             {children}
@@ -885,7 +1051,7 @@ const ChatView = ({
                         );
                       },
                       pre: ({ node, children, ...rest }) => (
-                        <pre 
+                        <pre
                           {...rest}
                           className="bg-background !p-0 !m-0 overflow-hidden"
                         >
@@ -896,7 +1062,7 @@ const ChatView = ({
                   >
                     {message.content}
                   </Markdown>
-                  
+
                   <div className="flex items-center gap-2 mt-2">
                     <button
                       onClick={() => handleCopyCode(message.content)}
@@ -914,57 +1080,65 @@ const ChatView = ({
                         </>
                       )}
                     </button>
-                    
+
                     {/* Reasoning toggle */}
                     {reasoningData.has(message.id) && (
                       <button
                         onClick={() => toggleReasoning(message.id)}
                         className={`text-sm flex items-center ml-4 ${
-                          reasoningData.get(message.id)?.visible 
-                            ? 'text-blue-500 dark:text-blue-400' 
-                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                          reasoningData.get(message.id)?.visible
+                            ? "text-blue-500 dark:text-blue-400"
+                            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                         }`}
                       >
                         <BrainCircuit size={16} className="mr-1" />
-                        {reasoningData.get(message.id)?.visible ? 'Hide reasoning' : 'Show reasoning'}
+                        {reasoningData.get(message.id)?.visible
+                          ? "Hide reasoning"
+                          : "Show reasoning"}
                       </button>
                     )}
-                    
+
                     {/* Agent events toggle button - Show only if message has workflow data */}
-                    {messageWorkflows.has(message.id) && 
-                     messageWorkflows.get(message.id)!.length > 0 && 
-                     !shouldHideWorkflow(getWorkflowEvents(message.id)) && (
-                      <button
-                        onClick={() => toggleAgentEvents(message.id)}
-                        className={`text-sm flex items-center ml-4 ${
-                          activeWorkflowMessageId === message.id && showAgentEvents
-                            ? 'text-purple-500 dark:text-purple-400' 
-                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                        }`}
-                      >
-                        <RefreshCw size={16} className="mr-1" />
-                        {activeWorkflowMessageId === message.id && showAgentEvents ? 'Hide workflow' : 'Show workflow'}
-                      </button>
-                    )}
+                    {messageWorkflows.has(message.id) &&
+                      messageWorkflows.get(message.id)!.length > 0 &&
+                      !shouldHideWorkflow(getWorkflowEvents(message.id)) && (
+                        <button
+                          onClick={() => toggleAgentEvents(message.id)}
+                          className={`text-sm flex items-center ml-4 ${
+                            activeWorkflowMessageId === message.id &&
+                            showAgentEvents
+                              ? "text-purple-500 dark:text-purple-400"
+                              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                          }`}
+                        >
+                          <RefreshCw size={16} className="mr-1" />
+                          {activeWorkflowMessageId === message.id &&
+                          showAgentEvents
+                            ? "Hide workflow"
+                            : "Show workflow"}
+                        </button>
+                      )}
                   </div>
-                  
+
                   {/* Reasoning content display */}
                   {reasoningData.get(message.id)?.visible && (
                     <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md">
-                      <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">AI Reasoning:</h4>
+                      <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+                        AI Reasoning:
+                      </h4>
                       <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
                         {reasoningData.get(message.id)?.content}
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Agent workflow timeline display */}
-                  {activeWorkflowMessageId === message.id && 
-                   showAgentEvents && 
-                   getWorkflowEvents(message.id).length > 0 &&
-                   !shouldHideWorkflow(getWorkflowEvents(message.id)) &&
-                    <AgentTimeline events={getWorkflowEvents(message.id)} />
-                  }
+                  {activeWorkflowMessageId === message.id &&
+                    showAgentEvents &&
+                    getWorkflowEvents(message.id).length > 0 &&
+                    !shouldHideWorkflow(getWorkflowEvents(message.id)) && (
+                      <AgentTimeline events={getWorkflowEvents(message.id)} />
+                    )}
                 </div>
               )}
             </div>
@@ -979,24 +1153,30 @@ const ChatView = ({
                   rehypePlugins={[rehypeRaw, rehypeKatex]}
                   components={{
                     code: (props) => {
-                      const { inline, className, children, ...rest } = props as CodeComponentProps;
-                      const match = /language-(\w+)/.exec(className || '');
-                      
+                      const { inline, className, children, ...rest } =
+                        props as CodeComponentProps;
+                      const match = /language-(\w+)/.exec(className || "");
+
                       if (!inline && match) {
                         return (
                           <CodeBlock
                             className={className}
                             onCopy={handleCopyCode}
-                            isCopied={copiedText === (typeof children === 'string' ? children : '')}
+                            isCopied={
+                              copiedText ===
+                              (typeof children === "string" ? children : "")
+                            }
                           >
-                            {typeof children === 'string' ? children.replace(/\n$/, '') : children}
+                            {typeof children === "string"
+                              ? children.replace(/\n$/, "")
+                              : children}
                           </CodeBlock>
                         );
                       }
-                      
+
                       return (
-                        <code 
-                          className={`${inline ? 'bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_10%,transparent)] px-1.5 py-0.5 rounded' : ''} ${className || ''}`}
+                        <code
+                          className={`${inline ? "bg-[color-mix(in_oklch,var(--color-primary,#6c47ff)_10%,transparent)] px-1.5 py-0.5 rounded" : ""} ${className || ""}`}
                           {...rest}
                         >
                           {children}
@@ -1004,7 +1184,7 @@ const ChatView = ({
                       );
                     },
                     pre: ({ node, children, ...rest }) => (
-                      <pre 
+                      <pre
                         {...rest}
                         className="bg-background !p-0 !m-0 overflow-hidden"
                       >
@@ -1015,84 +1195,88 @@ const ChatView = ({
                 >
                   {streamingContent}
                 </Markdown>
-                
+
                 <div className="flex items-center gap-2 mt-2">
                   {/* Streaming reasoning toggle */}
                   {streamingReasoning && (
                     <button
                       onClick={() => toggleStreamingReasoning()}
                       className={`text-sm flex items-center ${
-                        showStreamingReasoning 
-                          ? 'text-blue-500 dark:text-blue-400' 
-                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        showStreamingReasoning
+                          ? "text-blue-500 dark:text-blue-400"
+                          : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                       }`}
                     >
                       <BrainCircuit size={16} className="mr-1" />
-                      {showStreamingReasoning ? 'Hide reasoning' : 'Show reasoning'}
+                      {showStreamingReasoning
+                        ? "Hide reasoning"
+                        : "Show reasoning"}
                     </button>
                   )}
-                  
+
                   {/* Streaming agent events toggle */}
-                  {streamingAgentEvents.length > 0 && 
-                   !shouldHideWorkflow(streamingAgentEvents) && (
-                    <button
-                      onClick={() => toggleAgentEvents()}
-                      className={`text-sm flex items-center ml-4 ${
-                        showAgentEvents 
-                          ? 'text-purple-500 dark:text-purple-400' 
-                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                      }`}
-                    >
-                      <RefreshCw size={16} className="mr-1" />
-                      {showAgentEvents ? 'Hide workflow' : 'Show workflow'}
-                    </button>
-                  )}
+                  {streamingAgentEvents.length > 0 &&
+                    !shouldHideWorkflow(streamingAgentEvents) && (
+                      <button
+                        onClick={() => toggleAgentEvents()}
+                        className={`text-sm flex items-center ml-4 ${
+                          showAgentEvents
+                            ? "text-purple-500 dark:text-purple-400"
+                            : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        }`}
+                      >
+                        <RefreshCw size={16} className="mr-1" />
+                        {showAgentEvents ? "Hide workflow" : "Show workflow"}
+                      </button>
+                    )}
                 </div>
-                
+
                 {/* Streaming reasoning content display */}
                 {streamingReasoning && showStreamingReasoning && (
                   <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md">
-                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">AI Reasoning:</h4>
+                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+                      AI Reasoning:
+                    </h4>
                     <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
                       {streamingReasoning}
                     </div>
                   </div>
                 )}
-                
+
                 {/* Streaming agent workflow timeline */}
-                {showAgentEvents && 
-                 streamingAgentEvents.length > 0 &&
-                 !shouldHideWorkflow(streamingAgentEvents) &&
-                  <AgentTimeline events={streamingAgentEvents} />
-                }
+                {showAgentEvents &&
+                  streamingAgentEvents.length > 0 &&
+                  !shouldHideWorkflow(streamingAgentEvents) && (
+                    <AgentTimeline events={streamingAgentEvents} />
+                  )}
               </div>
             </div>
           )}
-          
+
           {/* This div serves as an anchor for scrolling to the bottom with dynamic height */}
-          <div 
-            ref={messagesEndRef} 
+          <div
+            ref={messagesEndRef}
             style={{ height: `${endSpacerHeight}px` }}
-            className="transition-height duration-300" 
+            className="transition-height duration-300"
           />
         </div>
 
         {/* Scroll to bottom button - only shows when not at bottom */}
         {showScrollBottom && (
-          <button 
+          <button
             onClick={() => scrollToBottom()}
-            className={`${simplified ? 'absolute' : 'fixed'} bottom-24 right-4 md:right-8 z-10 p-3 bg-gray-800 dark:bg-gray-200 text-white dark:text-black rounded-full shadow-md hover:bg-gray-700 dark:hover:bg-gray-300 transition-all duration-200 flex items-center justify-center pulse-animation`}
+            className={`${simplified ? "absolute" : "fixed"} bottom-24 right-4 md:right-8 z-10 p-3 bg-gray-800 dark:bg-gray-200 text-white dark:text-black rounded-full shadow-md hover:bg-gray-700 dark:hover:bg-gray-300 transition-all duration-200 flex items-center justify-center pulse-animation`}
             aria-label="Scroll to bottom"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="20" 
-              height="20" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               <polyline points="6 9 12 15 18 9"></polyline>
@@ -1104,12 +1288,12 @@ const ChatView = ({
       {/* Chat input area */}
       <form
         onSubmit={handleSendMessage}
-        className={`${simplified ? 'absolute' : 'fixed'} bottom-4 w-full px-4 transition-all duration-300 ${
-          simplified 
-            ? 'left-0 right-0 mx-auto'
-            : (sidebarOpen 
-              ? 'left-[var(--sidebar-width)] right-0 max-w-3xl mx-auto' 
-              : 'left-0 right-0 max-w-3xl mx-auto')
+        className={`${simplified ? "absolute" : "fixed"} bottom-4 w-full px-4 transition-all duration-300 ${
+          simplified
+            ? "left-0 right-0 mx-auto"
+            : sidebarOpen
+              ? "left-[var(--sidebar-width)] right-0 max-w-3xl mx-auto"
+              : "left-0 right-0 max-w-3xl mx-auto"
         }`}
       >
         <div className="backdrop-blur-md rounded-2xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700">
@@ -1161,21 +1345,30 @@ const ChatView = ({
                     aria-expanded={isModelDropdownOpen}
                     aria-haspopup="true"
                   >
-                    <span className="mr-1">{MODEL_DISPLAY_NAMES[selectedModel]}</span>
-                    <ChevronDown size={12} className={`transition-transform ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
+                    <span className="mr-1">
+                      {MODEL_DISPLAY_NAMES[selectedModel]}
+                    </span>
+                    <ChevronDown
+                      size={12}
+                      className={`transition-transform ${isModelDropdownOpen ? "rotate-180" : ""}`}
+                    />
                   </button>
                 </Tooltip>
-                
+
                 {isModelDropdownOpen && (
                   <div className="absolute z-10 bottom-full mb-1 left-0 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 text-sm min-w-[120px]">
-                    <ul role="menu" aria-orientation="vertical" aria-labelledby="model-menu">
+                    <ul
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="model-menu"
+                    >
                       {Object.entries(MODELS).map(([key, value]) => (
                         <li key={key}>
                           <button
                             type="button"
                             className={`
                               w-full text-left px-3 py-1.5
-                              ${value === selectedModel ? 'bg-gray-50 dark:bg-gray-700' : ''} 
+                              ${value === selectedModel ? "bg-gray-50 dark:bg-gray-700" : ""} 
                               hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
                             `}
                             onClick={() => handleModelSelect(value)}
@@ -1216,4 +1409,4 @@ const ChatView = ({
   );
 };
 
-export default ChatView; 
+export default ChatView;

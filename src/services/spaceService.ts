@@ -193,7 +193,9 @@ export async function getChatMessages(
   try {
     const { data, error } = await supabase
       .from("chat_messages")
-      .select("id, chat_session_id, space_id, user_id, content, is_user, created_at, workflow, reasoning")
+      .select(
+        "id, chat_session_id, space_id, user_id, content, is_user, created_at, workflow, reasoning",
+      )
       .eq("chat_session_id", chatSessionId)
       .order("created_at", { ascending: true });
 
@@ -282,7 +284,10 @@ export async function createSpaceWithWorkspace(
       );
 
       if (!workspaceResult.success) {
-        console.error("Failed to add space to workspace:", workspaceResult.error);
+        console.error(
+          "Failed to add space to workspace:",
+          workspaceResult.error,
+        );
         // We don't fail the whole operation if workspace assignment fails
         // The space was still created
       }
@@ -346,10 +351,7 @@ export async function updateSpaceWithWorkspace(
     // Handle workspace assignment
     if (workspaceId) {
       // First remove from any existing workspaces
-      await supabase
-        .from("workspace_spaces")
-        .delete()
-        .eq("space_id", spaceId);
+      await supabase.from("workspace_spaces").delete().eq("space_id", spaceId);
 
       // Then add to the new workspace
       const { error: workspaceError } = await supabase
@@ -365,10 +367,7 @@ export async function updateSpaceWithWorkspace(
       }
     } else {
       // If no workspace specified, remove from all workspaces (make unorganized)
-      await supabase
-        .from("workspace_spaces")
-        .delete()
-        .eq("space_id", spaceId);
+      await supabase.from("workspace_spaces").delete().eq("space_id", spaceId);
     }
 
     return spaceResult;
@@ -476,7 +475,7 @@ export async function sendAndStreamChatMessage(
   },
   isNoteQuestion: boolean = false,
   noteContent?: string,
-  activeFileId?: string
+  activeFileId?: string,
 ): Promise<{
   success: boolean;
   userMessageResult?: { success: boolean; data?: ChatMessage; error?: any };
@@ -496,10 +495,10 @@ export async function sendAndStreamChatMessage(
     );
 
     if (!userMessageResult.success) {
-      return { 
-        success: false, 
-        userMessageResult, 
-        error: "Failed to send message" 
+      return {
+        success: false,
+        userMessageResult,
+        error: "Failed to send message",
       };
     }
 
@@ -517,18 +516,18 @@ export async function sendAndStreamChatMessage(
     if (sandboxData) {
       // Format the sandbox information in a clear, structured way
       queryText = `${messageText}\n\n--- SANDBOX INFORMATION ---\n`;
-      
+
       // Add code with language
       queryText += `Code (${sandboxData.language}):\n\`\`\`${sandboxData.language}\n${sandboxData.code}\n\`\`\`\n\n`;
-      
+
       // Add console output if available
       if (sandboxData.consoleOutput && sandboxData.consoleOutput.trim()) {
         queryText += `Console Output:\n\`\`\`\n${sandboxData.consoleOutput}\n\`\`\`\n\n`;
       }
-      
+
       // Update the user message with the enhanced content
       userOnlyMessage[0].content = queryText;
-      
+
       console.log("Including sandbox code and output in query");
     }
 
@@ -553,9 +552,7 @@ export async function sendAndStreamChatMessage(
 
     // Ensure the final response doesn't contain SSE format before saving
     if (finalResponse.includes('data: {"type":')) {
-      console.warn(
-        "Final response contains SSE format. This is unexpected.",
-      );
+      console.warn("Final response contains SSE format. This is unexpected.");
 
       // Attempt to clean it up
       try {
@@ -579,28 +576,28 @@ export async function sendAndStreamChatMessage(
 
     if (aiMessageResult.success) {
       console.log("AI message saved to Supabase successfully");
-      return { 
-        success: true, 
-        userMessageResult, 
-        aiMessageResult 
+      return {
+        success: true,
+        userMessageResult,
+        aiMessageResult,
       };
     } else {
       console.error(
         "Failed to save AI message to Supabase:",
         aiMessageResult.error,
       );
-      return { 
-        success: false, 
-        userMessageResult, 
-        aiMessageResult, 
-        error: "Failed to save AI response" 
+      return {
+        success: false,
+        userMessageResult,
+        aiMessageResult,
+        error: "Failed to save AI response",
       };
     }
   } catch (error) {
     console.error("Error sending and streaming message:", error);
-    return { 
-      success: false, 
-      error: "Error processing message and response" 
+    return {
+      success: false,
+      error: "Error processing message and response",
     };
   }
 }
@@ -627,13 +624,13 @@ export async function handleSessionDeletion(
     if (!result.success) {
       return {
         success: false,
-        error: result.error || "Failed to delete chat session"
+        error: result.error || "Failed to delete chat session",
       };
     }
 
     // Remove the deleted session from the list
     const remainingSessions = allSessions.filter(
-      (session) => session.id !== sessionId
+      (session) => session.id !== sessionId,
     );
 
     // If the deleted session was the current one, set the first available session as current
@@ -648,13 +645,13 @@ export async function handleSessionDeletion(
     return {
       success: true,
       sessions: remainingSessions,
-      newCurrentSession
+      newCurrentSession,
     };
   } catch (err) {
     console.error("Error in handleSessionDeletion:", err);
     return {
       success: false,
-      error: "An error occurred while deleting the chat session"
+      error: "An error occurred while deleting the chat session",
     };
   }
 }

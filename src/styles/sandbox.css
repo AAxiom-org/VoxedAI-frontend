@@ -1,7 +1,7 @@
 .cm-gutter.cm-lineNumbers .cm-gutterElement {
-    font-size: 12px;
+  font-size: 12px;
 }
-  
+
 .sp-c-euXojQ,
 .sp-editor,
 .sp-stack,
@@ -19,9 +19,9 @@
 .cm-editor,
 .cm-scroller,
 .cm-content {
-    background-color: var(--color-background) !important;
+  background-color: var(--color-background) !important;
 }
 
 .ͼ1o.cm-editor.cm-focused .cm-activeLine {
-    background-color: var(--color-card) !important;
+  background-color: var(--color-card) !important;
 }

@@ -7,6 +7,7 @@ This implementation allows the application to include note content in AI queries
 ### 1. useNoteState Hook
 
 The `useNoteState` hook provides:
+
 - Information about whether a note is currently open
 - The ID of the open note
 - A function to fetch the content of the open note when needed
@@ -53,4 +54,4 @@ When note content is provided, it's included in the query request to the AI serv
 
 - Provides context-aware responses for note-related queries
 - Only fetches note content when needed (on submit)
-- Avoids infinite loops by not triggering updates when note content changes 
+- Avoids infinite loops by not triggering updates when note content changes

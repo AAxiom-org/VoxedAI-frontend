@@ -5,6 +5,7 @@ This document outlines the comprehensive plan for migrating functionality from t
 ## Overview
 
 The migration will focus on these major components:
+
 - Sidebar
 - Chat
 - VoxPilot
@@ -20,6 +21,7 @@ Each component requires specific functionality to be carried over from the origi
 Ensure workspace uses the real supabase data to populate the workspace selector and the space gallery
 
 **Tasks:**
+
 - [x] Migrate/use the supabase functions for getting and populating all data
 - [x] Ensure ui populates with this data
 - [x] Implement the management functions delete, edit, create, etc.
@@ -28,6 +30,7 @@ Ensure workspace uses the real supabase data to populate the workspace selector 
 - [x] Take screenshot of working sidebar with files
 
 **Implementation Notes:**
+
 - Integrated the existing supabase functions from workspaceService.ts into the new UI
 - Added proper TypeScript types to fix linter errors
 - Implemented workspace creation, deletion, and selection functionality
@@ -46,6 +49,7 @@ Ensure workspace uses the real supabase data to populate the workspace selector 
 The application routes need to be updated to properly work with the new UI components.
 
 **Tasks:**
+
 - [x] Update App.tsx to import the correct new page components
 - [x] Fix the existing linter errors in App.tsx regarding missing imports
 - [x] Ensure routes are properly set up for all components
@@ -56,6 +60,7 @@ The application routes need to be updated to properly work with the new UI compo
 - [x] Take screenshot of working navigation
 
 **Implementation Notes:**
+
 - Updated App.tsx to use the new UI components
 - Fixed import paths and component names
 - Maintained the existing authentication flows
@@ -70,6 +75,7 @@ The application routes need to be updated to properly work with the new UI compo
 The new sidebar contains UI elements for files but lacks the actual functionality to manage them.
 
 **Tasks:**
+
 - [x] Implement file fetching from backend using the API structure from original Sidebar component
 - [x] Add proper typing for FileItem interface based on the backend response structure
 - [x] Implement file visibility toggling with backend synchronization
@@ -81,6 +87,7 @@ The new sidebar contains UI elements for files but lacks the actual functionalit
 - [x] Take screenshot of working sidebar with files
 
 **Implementation Notes:**
+
 - Renamed the component from 'Sidebar' to 'Space' to match the file name
 - Fixed the route parameter mismatch by using `{ id: spaceId }` in useParams
 - Implemented file fetching from Supabase using the getSpaceFiles function
@@ -102,6 +109,7 @@ The new sidebar contains UI elements for files but lacks the actual functionalit
 The new UI has a "New Note" button but lacks the functionality to create notes.
 
 **Tasks:**
+
 - [x] Implement note creation logic from original sidebar implementation
 - [x] Add proper typing for note files
 - [x] Connect the "New Note" button to the actual creation function
@@ -111,6 +119,7 @@ The new UI has a "New Note" button but lacks the functionality to create notes.
 - [x] Take screenshot of note creation process
 
 **Implementation Notes:**
+
 - Implemented note creation functionality using the uploadAndProcessFile service
 - Added proper typing for note files using the ExtendedFile interface
 - Connected the "New Note" button to the createNewNote function
@@ -127,6 +136,7 @@ The new UI has a "New Note" button but lacks the functionality to create notes.
 The new UI has a notes list but it uses fake data. Don't worry about note editing or opening yet just the data loading and management.
 
 **Tasks:**
+
 - [x] Implement note fetching and population
 - [x] Add proper typing for note files
 - [x] Sync the sidebar and notes (on creation)
@@ -144,6 +154,7 @@ The new UI has a notes list but it uses fake data. Don't worry about note editin
 - [x] Take screenshot of note creation process
 
 **Implementation Notes:**
+
 - Implemented note fetching from Supabase using the getSpaceFiles function
 - Added client-side filtering to show only notes (is_note: true)
 - Added proper typing for notes with the ExtendedFile interface
@@ -174,12 +185,11 @@ The new UI has a notes list but it uses fake data. Don't worry about note editin
 - [x] Move sidebar code to Sidebar.tsx
 - [x] Routing for notes: notes-list, note/:id (ensure sidebar uses routes aswell)
 - [x] Differentiate notes buttons 3 subtasks
-    - [x] Make the dropdown button not propagate and separate opening dropdown and opening notes component
-    - [x] Individual note buttons need to open the notes themselves
+  - [x] Make the dropdown button not propagate and separate opening dropdown and opening notes component
+  - [x] Individual note buttons need to open the notes themselves
 - [x] Update create/edit modal
 - [x] New note button in sidebar needs to pull up note creation modal (from note.tsx)
 - [x] Note editing modal (edit button needs to work on list cards). Just use the existing note creation modal and pre-populate the details
-
 
 ## Phase 2: Chat Implementation
 
@@ -189,6 +199,7 @@ The new Chat component has UI for messages but lacks actual sending/receiving fu
 worked read old_code/NotebookDetail.tsx and old_code/components/ChatInterface.tsx
 
 **Tasks:**
+
 - [ ] Implement message sending functionality from original ChatInterface
 - [ ] Set up message receiving and streaming response display
 - [ ] Add proper user/assistant message styling from the old ChatInterface
@@ -202,6 +213,7 @@ worked read old_code/NotebookDetail.tsx and old_code/components/ChatInterface.ts
 The original app had features to load and navigate between past conversations.
 
 **Tasks:**
+
 - [ ] Implement loading past conversations from the backend
 - [ ] Add functionality to continue past conversations
 - [ ] Implement the chat UI state change after sending a message
@@ -215,6 +227,7 @@ The original app had features to load and navigate between past conversations.
 The chat interface needs controls to toggle between different modes.
 
 **Tasks:**
+
 - [ ] Implement the mode toggle functionality for notes and code
 - [ ] Connect toggles to their respective panels
 - [ ] Ensure proper state management between components
@@ -230,6 +243,7 @@ The chat interface needs controls to toggle between different modes.
 VoxPilot needs to properly open/close and maintain a clean interface.
 
 **Tasks:**
+
 - [ ] Implement open/close toggle functionality
 - [ ] Update VoxPilot UI to match the old ChatInterface design patterns
 - [ ] Add animations for opening/closing
@@ -243,6 +257,7 @@ VoxPilot needs to properly open/close and maintain a clean interface.
 VoxPilot needs its own message handling system that reuses chat functionality.
 
 **Tasks:**
+
 - [ ] Reuse chat message sending/receiving code for VoxPilot
 - [ ] Implement message streaming in VoxPilot
 - [ ] Add proper message formatting including code blocks
@@ -258,6 +273,7 @@ VoxPilot needs its own message handling system that reuses chat functionality.
 The Notes panel needs the BlockNote editor and proper saving functionality.
 
 **Tasks:**
+
 - [ ] Integrate BlockNote editor from original implementation
 - [ ] Implement note loading from backend
 - [ ] Add note saving functionality with autosave
@@ -271,6 +287,7 @@ The Notes panel needs the BlockNote editor and proper saving functionality.
 The original notes panel had organization and search features.
 
 **Tasks:**
+
 - [ ] Implement note searching functionality
 - [ ] Add note organization by tags or categories
 - [ ] Implement note deletion with confirmation
@@ -286,6 +303,7 @@ The original notes panel had organization and search features.
 The Code component needs proper editor functionality from the original Sandbox.
 
 **Tasks:**
+
 - [ ] Integrate SandpackProvider and related components
 - [ ] Implement language selection from original Sandbox
 - [ ] Add layout mode toggling
@@ -299,6 +317,7 @@ The Code component needs proper editor functionality from the original Sandbox.
 The code sandbox needs to properly run code and display output.
 
 **Tasks:**
+
 - [ ] Routing for code
 - [ ] Implement code execution service integration
 - [ ] Add proper output formatting with line numbers
@@ -313,6 +332,7 @@ The code sandbox needs to properly run code and display output.
 The original sandbox had several advanced features to be carried over.
 
 **Tasks:**
+
 - [ ] Implement autocompletion based on selected language
 - [ ] Add theme support based on application theme
 - [ ] Implement console layout switching
@@ -328,6 +348,7 @@ The original sandbox had several advanced features to be carried over.
 Ensure all components work together seamlessly.
 
 **Tasks:**
+
 - [ ] Test integration between all components
 - [ ] Ensure sidebar can properly toggle panels
 - [ ] Test chat with code and notes mode toggling
@@ -341,6 +362,7 @@ Ensure all components work together seamlessly.
 Test complete user flows through the application.
 
 **Tasks:**
+
 - [ ] Test complete flow: login → create note → chat → use code → save
 - [ ] Test file uploading and management across components
 - [ ] Ensure all transitions and animations work properly

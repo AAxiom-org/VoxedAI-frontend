@@ -16,14 +16,14 @@ The toggled files feature allows users to select which files should be included 
 The `useToggledFiles` hook provides a simple interface for managing toggled files:
 
 ```typescript
-const { 
-  toggledFiles,        // Set<string> - The current toggled files
-  isLoading,           // boolean - Whether the files are being loaded
-  error,               // Error | null - Any error that occurred
-  toggleFile,          // (fileId: string) => void - Toggle a file on/off
-  setFiles,            // (fileIds: string[]) => void - Set multiple files at once
-  validateFiles,       // (availableFileIds: string[]) => void - Validate files against available files
-  isFileToggled        // (fileId: string) => boolean - Check if a file is toggled
+const {
+  toggledFiles, // Set<string> - The current toggled files
+  isLoading, // boolean - Whether the files are being loaded
+  error, // Error | null - Any error that occurred
+  toggleFile, // (fileId: string) => void - Toggle a file on/off
+  setFiles, // (fileIds: string[]) => void - Set multiple files at once
+  validateFiles, // (availableFileIds: string[]) => void - Validate files against available files
+  isFileToggled, // (fileId: string) => boolean - Check if a file is toggled
 } = useToggledFiles(userId);
 ```
 
@@ -41,8 +41,8 @@ The Sidebar component uses the `useToggledFiles` hook to manage toggled files:
 
 ```typescript
 // In Sidebar.tsx
-const { 
-  toggledFiles, 
+const {
+  toggledFiles,
   toggleFile,
   validateFiles
 } = useToggledFiles(userId);
@@ -93,4 +93,4 @@ Gets toggled files from the local cache.
 
 ### `getCurrentToggledFiles(userId: string, token?: string): Promise<string[]>`
 
-Gets the current toggled files, first checking the cache and then falling back to the server if needed. 
+Gets the current toggled files, first checking the cache and then falling back to the server if needed.

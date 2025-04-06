@@ -1,15 +1,15 @@
-import { useUrlState } from './useUrlState';
-import { Model, DEFAULT_MODEL } from '../types/models';
+import { useUrlState } from "./useUrlState";
+import { Model, DEFAULT_MODEL } from "../types/models";
 
 export type ChatStateOptions = {
   currentSessionId?: string | null;
-  selectedView?: 'initial' | 'chat' | 'grid';
+  selectedView?: "initial" | "chat" | "grid";
   selectedModel?: Model;
 };
 
 const defaultChatState: ChatStateOptions = {
   currentSessionId: null,
-  selectedView: 'initial',
+  selectedView: "initial",
   selectedModel: DEFAULT_MODEL,
 };
 
@@ -19,12 +19,12 @@ const defaultChatState: ChatStateOptions = {
  * @returns A tuple containing the current chat state and a setter function
  */
 export function useChatState(
-  initialState: Partial<ChatStateOptions> = {}
+  initialState: Partial<ChatStateOptions> = {},
 ): [ChatStateOptions, (state: Partial<ChatStateOptions>) => void] {
   const mergedDefaults = { ...defaultChatState, ...initialState };
-  
+
   const [chatState, setChatStateRaw] = useUrlState<ChatStateOptions>({
-    key: 'chat',
+    key: "chat",
     defaultValue: mergedDefaults,
   });
 
@@ -34,4 +34,4 @@ export function useChatState(
   };
 
   return [chatState, setChatState];
-} 
+}

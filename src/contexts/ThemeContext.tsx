@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
 // Define the theme type
 export type ThemeType = "light" | "dark";
@@ -28,19 +34,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if user has a stored preference
     const storedTheme = localStorage.getItem("color-theme") as ThemeType | null;
-    
+
     // If we have a stored preference, use it
     if (storedTheme === "light" || storedTheme === "dark") {
       setThemeState(storedTheme);
       applyTheme(storedTheme);
     } else {
       // Check system preference
-      const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const systemPrefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
       const defaultTheme = systemPrefersDark ? "dark" : "light";
       setThemeState(defaultTheme);
       applyTheme(defaultTheme);
     }
-    
+
     // Add listener for system preference changes
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = (e: MediaQueryListEvent) => {
@@ -52,7 +60,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         applyTheme(newTheme);
       }
     };
-    
+
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
@@ -80,4 +88,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       {children}
     </ThemeContext.Provider>
   );
-} 
+}

@@ -1,16 +1,32 @@
-import { SandpackProvider, SandpackCodeEditor } from "@codesandbox/sandpack-react";
+import {
+  SandpackProvider,
+  SandpackCodeEditor,
+} from "@codesandbox/sandpack-react";
 import { useState, useEffect, useRef } from "react";
 import languageFiles from "../../utils/codeExamples";
 import { autocompletion } from "@codemirror/autocomplete";
 import { githubLight, atomDark } from "@codesandbox/sandpack-themes";
-import { FaColumns, FaChevronDown, FaEyeSlash, FaPlus, FaTrash, FaSortDown, FaSortUp, FaKey } from "react-icons/fa";
+import {
+  FaColumns,
+  FaChevronDown,
+  FaEyeSlash,
+  FaPlus,
+  FaTrash,
+  FaSortDown,
+  FaSortUp,
+  FaKey,
+} from "react-icons/fa";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSupabaseUser } from "../../contexts/UserContext";
 import { deleteFileWithRetry } from "../../services/fileUpload";
 
 import { python } from "@codemirror/lang-python";
 
-import { executeCode, executeCodeLocally, CodeExecutionResponse } from "../../services/codeRunnerService";
+import {
+  executeCode,
+  executeCodeLocally,
+  CodeExecutionResponse,
+} from "../../services/codeRunnerService";
 
 // Define custom types for our component
 interface ConsoleLayoutMode {
@@ -31,28 +47,40 @@ interface Files {
 }
 
 // Custom console output component
-const CustomConsoleOutput = ({ result, setCodeExecutionResult, isRunning, setIsRunning }: { 
-  result: CodeExecutionResponse | null, 
-  setCodeExecutionResult: React.Dispatch<React.SetStateAction<CodeExecutionResponse | null>>, 
-  isRunning: boolean, 
-  setIsRunning: React.Dispatch<React.SetStateAction<boolean>> 
+const CustomConsoleOutput = ({
+  result,
+  setCodeExecutionResult,
+  isRunning,
+  setIsRunning,
+}: {
+  result: CodeExecutionResponse | null;
+  setCodeExecutionResult: React.Dispatch<
+    React.SetStateAction<CodeExecutionResponse | null>
+  >;
+  isRunning: boolean;
+  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-  
   const renderWithLineNumbers = (text: string | undefined) => {
     if (!text) return null;
-    
-    const lines = text.split('\n');
+
+    const lines = text.split("\n");
     return (
       <div className="relative bg-card">
-        <div className={`absolute left-0 top-0 px-2 py-3 text-right select-none border-r border-adaptive`} style={{ width: '3rem' }}>
+        <div
+          className={`absolute left-0 top-0 px-2 py-3 text-right select-none border-r border-adaptive`}
+          style={{ width: "3rem" }}
+        >
           {lines.map((_, i) => (
-            <div key={i} className="text-adaptive text-xs pr-1 leading-6 h-6">{i + 1}</div>
+            <div key={i} className="text-adaptive text-xs pr-1 leading-6 h-6">
+              {i + 1}
+            </div>
           ))}
         </div>
         <div className="pl-16 pr-4 py-3 whitespace-pre-wrap font-mono">
           {lines.map((line, i) => (
             <div key={i} className="leading-6 h-6 text-adaptive">
-              {line || '\u00A0'} {/* Use non-breaking space to preserve empty lines */}
+              {line || "\u00A0"}{" "}
+              {/* Use non-breaking space to preserve empty lines */}
             </div>
           ))}
         </div>
@@ -66,7 +94,7 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, isRunning, setIsR
         <div className="p-4 text-adaptive flex flex-col justify-center items-center space-y-4">
           <p>Run your code to see output here.</p>
           <RunPythonButton
-            getOrderedFiles={() => []} 
+            getOrderedFiles={() => []}
             setCodeExecutionResult={setCodeExecutionResult}
             toggleConsoleLayoutRunButton={() => {}}
             isRunning={isRunning}
@@ -78,15 +106,20 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, isRunning, setIsR
   }
 
   // Check if there's an actual code execution error, even if the API reported success
-  const hasExecutionError = result.has_execution_error || (result.stderr && result.stderr.trim().length > 0);
-  const hasResult = result.result && Object.keys(result.result || {}).length > 0;
+  const hasExecutionError =
+    result.has_execution_error ||
+    (result.stderr && result.stderr.trim().length > 0);
+  const hasResult =
+    result.result && Object.keys(result.result || {}).length > 0;
   const hasOutput = result.stdout && result.stdout.trim().length > 0;
 
   return (
     <div className="font-mono text-sm bg-background overflow-auto">
       <div className="p-4">
         {/* Execution Status Header */}
-        <div className={`${hasExecutionError ? "text-red-600" : "text-green-600"} mb-2`}>
+        <div
+          className={`${hasExecutionError ? "text-red-600" : "text-green-600"} mb-2`}
+        >
           {hasExecutionError ? (
             <>✗ Code execution error</>
           ) : (
@@ -94,17 +127,19 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, isRunning, setIsR
           )}
           {result.execution_time && ` (${result.execution_time.toFixed(4)}s)`}
         </div>
-        
+
         {/* Standard output */}
         {hasOutput && (
           <div className="mb-4">
             <div className="text-adaptive font-semibold mb-1">Output:</div>
-            <div className={`bg-background rounded-md overflow-auto border border-adaptive`}>
+            <div
+              className={`bg-background rounded-md overflow-auto border border-adaptive`}
+            >
               {renderWithLineNumbers(result.stdout)}
             </div>
           </div>
         )}
-        
+
         {/* Error output - shown regardless of success status if stderr exists */}
         {hasExecutionError && (
           <div className="mb-4">
@@ -114,28 +149,34 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, isRunning, setIsR
             </div>
           </div>
         )}
-        
+
         {/* Return values */}
         {hasResult && (
           <div className="mb-4">
             <div className="text-adaptive font-semibold mb-1">Variables:</div>
-            <div className={`bg-card p-3 rounded-md overflow-auto border border-adaptive`}>
+            <div
+              className={`bg-card p-3 rounded-md overflow-auto border border-adaptive`}
+            >
               <table className="w-full text-left">
                 <thead className="border-b border-adaptive">
                   <tr>
-                    <th className="pb-2 pr-4 font-semibold text-adaptive">Name</th>
+                    <th className="pb-2 pr-4 font-semibold text-adaptive">
+                      Name
+                    </th>
                     <th className="pb-2 font-semibold text-adaptive">Value</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Object.entries(result.result || {}).map(([key, value]) => (
-                    <tr key={key} className="border-b border-adaptive last:border-0">
+                    <tr
+                      key={key}
+                      className="border-b border-adaptive last:border-0"
+                    >
                       <td className="py-2 pr-4 text-blue-600">{key}</td>
                       <td className="py-2 text-adaptive">
-                        {typeof value === 'object' 
+                        {typeof value === "object"
                           ? JSON.stringify(value, null, 2)
-                          : String(value)
-                        }
+                          : String(value)}
                       </td>
                     </tr>
                   ))}
@@ -159,9 +200,12 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, isRunning, setIsR
 export default function Sandbox() {
   const { theme } = useTheme();
   const { getSupabaseClient, refreshSupabaseToken } = useSupabaseUser();
-  const [codeExecutionResult, setCodeExecutionResult] = useState<CodeExecutionResponse | null>(null);
+  const [codeExecutionResult, setCodeExecutionResult] =
+    useState<CodeExecutionResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [consoleLayout, setConsoleLayout] = useState<ConsoleLayoutMode>({ mode: "collapsed" });
+  const [consoleLayout, setConsoleLayout] = useState<ConsoleLayoutMode>({
+    mode: "collapsed",
+  });
   const [files, setFiles] = useState<Files>({});
   const [fileKeys, setFileKeys] = useState<string[]>([]);
   const [activeFile, setActiveFile] = useState<string>("/main.py");
@@ -173,21 +217,21 @@ export default function Sandbox() {
   // Initialize with default Python file
   useEffect(() => {
     const pythonExample = languageFiles.python;
-    
+
     // Convert to our file structure format
     const initialFiles: Files = {};
     let initialFileKeys: string[] = [];
-    
+
     Object.entries(pythonExample).forEach(([key, value], index) => {
       const isMain = key === "/main.py";
       initialFiles[key] = {
-        ...value, 
+        ...value,
         isMain,
-        generationOrder: index + 1
+        generationOrder: index + 1,
       };
       initialFileKeys.push(key);
     });
-    
+
     setFiles(initialFiles);
     setFileKeys(initialFileKeys);
     setGenerationCounter(Object.keys(initialFiles).length + 1);
@@ -196,24 +240,24 @@ export default function Sandbox() {
   // Add new file handler
   const handleAddFile = () => {
     if (!newFileName) return;
-    
+
     // Ensure the file has a .py extension
     let filename = newFileName;
     if (!filename.endsWith(".py")) {
       filename += ".py";
     }
-    
+
     // Make sure the filename has a leading slash
     if (!filename.startsWith("/")) {
       filename = "/" + filename;
     }
-    
+
     // Check if the file already exists
     if (fileKeys.includes(filename)) {
       alert("A file with this name already exists.");
       return;
     }
-    
+
     // Add the new file
     const newFiles = {
       ...files,
@@ -221,18 +265,18 @@ export default function Sandbox() {
         code: "# New Python file\n",
         active: true,
         isMain: false,
-        generationOrder: generationCounter
-      }
+        generationOrder: generationCounter,
+      },
     };
-    
+
     const newFileKeys = [...fileKeys, filename];
-    
+
     setFiles(newFiles);
     setFileKeys(newFileKeys);
     setActiveFile(filename);
     setNewFileModalOpen(false);
     setNewFileName("");
-    setGenerationCounter(prev => prev + 1);
+    setGenerationCounter((prev) => prev + 1);
   };
 
   // Delete file handler
@@ -241,16 +285,16 @@ export default function Sandbox() {
     if (fileKeys.length <= 1 || files[filename].isMain) {
       return;
     }
-    
+
     // If this is a file from the database (it has an id), delete it there first
     if (files[filename].id) {
       try {
         const result = await deleteFileWithRetry(
           files[filename].id as string,
           refreshSupabaseToken,
-          getSupabaseClient
+          getSupabaseClient,
         );
-        
+
         if (!result.success) {
           console.error("Failed to delete file from database:", result.error);
           return;
@@ -260,15 +304,15 @@ export default function Sandbox() {
         return;
       }
     }
-    
+
     const newFiles = { ...files };
     delete newFiles[filename];
-    
-    const newFileKeys = fileKeys.filter(key => key !== filename);
-    
+
+    const newFileKeys = fileKeys.filter((key) => key !== filename);
+
     setFiles(newFiles);
     setFileKeys(newFileKeys);
-    
+
     // If we deleted the active file, set a new active file
     if (activeFile === filename) {
       setActiveFile(newFileKeys[0]);
@@ -278,67 +322,79 @@ export default function Sandbox() {
   // Set as main file handler
   const handleSetMainFile = (filename: string) => {
     const newFiles = { ...files };
-    
+
     // Update all files to not be main
-    Object.keys(newFiles).forEach(key => {
+    Object.keys(newFiles).forEach((key) => {
       if (newFiles[key].isMain) {
         newFiles[key] = { ...newFiles[key], isMain: false };
       }
     });
-    
+
     // Set the selected file as main
     newFiles[filename] = { ...newFiles[filename], isMain: true };
-    
+
     setFiles(newFiles);
   };
 
   // Move file up in generation order
   const handleMoveFileUp = (filename: string) => {
     const currentOrder = files[filename].generationOrder;
-    
+
     // Find the file that's right before this one in order
     const fileToSwapWith = Object.entries(files).find(
-      ([_, data]) => data.generationOrder === currentOrder - 1
+      ([_, data]) => data.generationOrder === currentOrder - 1,
     );
-    
+
     if (!fileToSwapWith) return; // Can't move up if already at the top
-    
+
     const newFiles = { ...files };
-    newFiles[filename] = { ...newFiles[filename], generationOrder: currentOrder - 1 };
-    newFiles[fileToSwapWith[0]] = { ...newFiles[fileToSwapWith[0]], generationOrder: currentOrder };
-    
+    newFiles[filename] = {
+      ...newFiles[filename],
+      generationOrder: currentOrder - 1,
+    };
+    newFiles[fileToSwapWith[0]] = {
+      ...newFiles[fileToSwapWith[0]],
+      generationOrder: currentOrder,
+    };
+
     setFiles(newFiles);
   };
 
   // Move file down in generation order
   const handleMoveFileDown = (filename: string) => {
     const currentOrder = files[filename].generationOrder;
-    
+
     // Find the file that's right after this one in order
     const fileToSwapWith = Object.entries(files).find(
-      ([_, data]) => data.generationOrder === currentOrder + 1
+      ([_, data]) => data.generationOrder === currentOrder + 1,
     );
-    
+
     if (!fileToSwapWith) return; // Can't move down if already at the bottom
-    
+
     const newFiles = { ...files };
-    newFiles[filename] = { ...newFiles[filename], generationOrder: currentOrder + 1 };
-    newFiles[fileToSwapWith[0]] = { ...newFiles[fileToSwapWith[0]], generationOrder: currentOrder };
-    
+    newFiles[filename] = {
+      ...newFiles[filename],
+      generationOrder: currentOrder + 1,
+    };
+    newFiles[fileToSwapWith[0]] = {
+      ...newFiles[fileToSwapWith[0]],
+      generationOrder: currentOrder,
+    };
+
     setFiles(newFiles);
   };
 
   // Convert our file structure to Sandpack format
   const getSandpackFiles = () => {
-    const sandpackFiles: Record<string, { code: string, active: boolean }> = {};
-    
+    const sandpackFiles: Record<string, { code: string; active: boolean }> = {};
+
     Object.entries(files).forEach(([key, value]) => {
       sandpackFiles[key] = {
         code: value.code,
-        active: key === activeFile
+        active: key === activeFile,
       };
     });
-    
+
     return sandpackFiles;
   };
 
@@ -348,15 +404,12 @@ export default function Sandbox() {
     const nonMainFiles = Object.entries(files)
       .filter(([_, data]) => !data.isMain)
       .sort((a, b) => a[1].generationOrder - b[1].generationOrder);
-    
+
     // Then find the main file
     const mainFile = Object.entries(files).find(([_, data]) => data.isMain);
-    
+
     // Combine them with main file last
-    return [
-      ...nonMainFiles,
-      ...(mainFile ? [mainFile] : [])
-    ];
+    return [...nonMainFiles, ...(mainFile ? [mainFile] : [])];
   };
 
   // Focus the new file input when modal opens
@@ -368,7 +421,11 @@ export default function Sandbox() {
 
   // Console layout toggle handler
   const toggleConsoleLayout = () => {
-    const layouts: ConsoleLayoutMode[] = [{ mode: "below" }, { mode: "side-by-side" }, { mode: "collapsed" }];
+    const layouts: ConsoleLayoutMode[] = [
+      { mode: "below" },
+      { mode: "side-by-side" },
+      { mode: "collapsed" },
+    ];
     const currentIndex = layouts.indexOf(consoleLayout);
     const nextIndex = (currentIndex + 1) % layouts.length;
     setConsoleLayout(layouts[nextIndex]);
@@ -409,15 +466,15 @@ export default function Sandbox() {
     ...(theme === "dark" ? atomDark : githubLight),
     colors: {
       ...(theme === "dark" ? atomDark.colors : githubLight.colors),
-      surface1: theme === 'dark' ? '#212121' : '#ffffff',
-      surface2: theme === 'dark' ? '#333333' : '#f5f5f5',
-      surface3: theme === 'dark' ? '#404040' : '#e5e5e5',
-      clickable: theme === 'dark' ? '#aaaaaa' : '#808080',
-      base: theme === 'dark' ? '#ffffff' : '#000000',
-      disabled: theme === 'dark' ? '#4d4d4d' : '#cccccc',
-      hover: theme === 'dark' ? '#2d2d2d' : '#eaeaea',
-      accent: '#6c47ff',
-    }
+      surface1: theme === "dark" ? "#212121" : "#ffffff",
+      surface2: theme === "dark" ? "#333333" : "#f5f5f5",
+      surface3: theme === "dark" ? "#404040" : "#e5e5e5",
+      clickable: theme === "dark" ? "#aaaaaa" : "#808080",
+      base: theme === "dark" ? "#ffffff" : "#000000",
+      disabled: theme === "dark" ? "#4d4d4d" : "#cccccc",
+      hover: theme === "dark" ? "#2d2d2d" : "#eaeaea",
+      accent: "#6c47ff",
+    },
   };
 
   return (
@@ -428,8 +485,7 @@ export default function Sandbox() {
         template="vanilla"
         customSetup={{
           entry: activeFile,
-          dependencies: {
-          }
+          dependencies: {},
         }}
         options={{
           activeFile: activeFile,
@@ -455,7 +511,7 @@ export default function Sandbox() {
               </div>
             ))}
           </div>
-          
+
           <div className="ml-2 flex items-center">
             <button
               onClick={() => setNewFileModalOpen(true)}
@@ -464,7 +520,7 @@ export default function Sandbox() {
             >
               <FaPlus size={14} />
             </button>
-            
+
             <button
               onClick={toggleConsoleLayout}
               className="ml-2 p-1.5 rounded-md bg-card-secondary text-adaptive hover:bg-card-secondary/80 focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -474,9 +530,13 @@ export default function Sandbox() {
             </button>
           </div>
         </div>
-        
-        <div className={`h-full ${consoleLayout.mode === "side-by-side" ? "flex gap-4" : "flex flex-col gap-4"}`}>
-          <div className={`${consoleLayout.mode === "side-by-side" ? "w-1/2" : "w-full"}`}>
+
+        <div
+          className={`h-full ${consoleLayout.mode === "side-by-side" ? "flex gap-4" : "flex flex-col gap-4"}`}
+        >
+          <div
+            className={`${consoleLayout.mode === "side-by-side" ? "w-1/2" : "w-full"}`}
+          >
             <SandpackCodeEditor
               showLineNumbers={true}
               showInlineErrors={true}
@@ -484,9 +544,11 @@ export default function Sandbox() {
               extensions={[python(), autocompletion()]}
             />
           </div>
-          
+
           {consoleLayout.mode !== "collapsed" && (
-            <div className={`${consoleLayout.mode === "side-by-side" ? "w-1/2" : "w-full"} border border-adaptive rounded-md overflow-hidden`}>
+            <div
+              className={`${consoleLayout.mode === "side-by-side" ? "w-1/2" : "w-full"} border border-adaptive rounded-md overflow-hidden`}
+            >
               <CustomConsoleOutput
                 result={codeExecutionResult}
                 setCodeExecutionResult={setCodeExecutionResult}
@@ -496,7 +558,7 @@ export default function Sandbox() {
             </div>
           )}
         </div>
-        
+
         {/* File Actions */}
         <div className="pb-14 flex flex-wrap items-center gap-2">
           <RunPythonButton
@@ -506,7 +568,7 @@ export default function Sandbox() {
             isRunning={isRunning}
             setIsRunning={setIsRunning}
           />
-          
+
           {activeFile && !files[activeFile]?.isMain && (
             <button
               onClick={() => handleSetMainFile(activeFile)}
@@ -516,7 +578,7 @@ export default function Sandbox() {
               Set as Main
             </button>
           )}
-          
+
           {activeFile && fileKeys.length > 1 && !files[activeFile]?.isMain && (
             <button
               onClick={() => handleDeleteFile(activeFile)}
@@ -526,7 +588,7 @@ export default function Sandbox() {
               Delete
             </button>
           )}
-          
+
           {activeFile && (
             <>
               <button
@@ -537,12 +599,14 @@ export default function Sandbox() {
                 <FaSortUp className="mr-1" />
                 Move Up
               </button>
-              
+
               <button
                 onClick={() => handleMoveFileDown(activeFile)}
                 disabled={
-                  files[activeFile]?.generationOrder >= 
-                  Math.max(...Object.values(files).map(f => f.generationOrder))
+                  files[activeFile]?.generationOrder >=
+                  Math.max(
+                    ...Object.values(files).map((f) => f.generationOrder),
+                  )
                 }
                 className="px-3 py-1.5 bg-card-secondary text-adaptive rounded-md hover:bg-card-secondary/80 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
               >
@@ -553,15 +617,25 @@ export default function Sandbox() {
           )}
         </div>
       </SandpackProvider>
-      
+
       {/* New File Modal */}
       {newFileModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card p-4 rounded-md w-96 max-w-full">
-            <h3 className="text-lg font-semibold mb-4 text-adaptive">Create New File</h3>
-            <form onSubmit={(e) => { e.preventDefault(); handleAddFile(); }}>
+            <h3 className="text-lg font-semibold mb-4 text-adaptive">
+              Create New File
+            </h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAddFile();
+              }}
+            >
               <div className="mb-4">
-                <label htmlFor="filename" className="block text-sm font-medium text-adaptive mb-1">
+                <label
+                  htmlFor="filename"
+                  className="block text-sm font-medium text-adaptive mb-1"
+                >
                   File Name
                 </label>
                 <input
@@ -580,7 +654,10 @@ export default function Sandbox() {
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
-                  onClick={() => { setNewFileModalOpen(false); setNewFileName(""); }}
+                  onClick={() => {
+                    setNewFileModalOpen(false);
+                    setNewFileName("");
+                  }}
                   className="px-3 py-1.5 border border-adaptive text-adaptive rounded-md hover:bg-card-secondary transition-colors"
                 >
                   Cancel
@@ -602,78 +679,83 @@ export default function Sandbox() {
 }
 
 // Run button component for Python multi-file execution
-function RunPythonButton({ 
+function RunPythonButton({
   getOrderedFiles,
-  setCodeExecutionResult, 
+  setCodeExecutionResult,
   toggleConsoleLayoutRunButton,
-  isRunning, 
-  setIsRunning 
-}: { 
-  getOrderedFiles: () => [string, FileData][],
-  setCodeExecutionResult: React.Dispatch<React.SetStateAction<CodeExecutionResponse | null>>, 
-  toggleConsoleLayoutRunButton: () => void,
-  isRunning: boolean,
-  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>
+  isRunning,
+  setIsRunning,
+}: {
+  getOrderedFiles: () => [string, FileData][];
+  setCodeExecutionResult: React.Dispatch<
+    React.SetStateAction<CodeExecutionResponse | null>
+  >;
+  toggleConsoleLayoutRunButton: () => void;
+  isRunning: boolean;
+  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const [useLocalFallback, setUseLocalFallback] = useState(false);
   const [apiConnectionAttempts, setApiConnectionAttempts] = useState(0);
 
   const runCode = async () => {
     if (isRunning) return;
-    
+
     setIsRunning(true);
     toggleConsoleLayoutRunButton();
-    
+
     try {
       // Get all files in generation order, with main file last
       const orderedFiles = getOrderedFiles();
-      
+
       // Concatenate all files, separated by newlines
       let combinedCode = "";
-      
+
       for (const [filename, fileData] of orderedFiles) {
         // Add a comment to indicate the file source
         combinedCode += `\n# ---- File: ${filename} ----\n`;
         combinedCode += fileData.code;
         combinedCode += "\n\n";
       }
-      
+
       let result: CodeExecutionResponse;
-      
+
       // Try to use the API if we haven't failed too many times
       if (!useLocalFallback && apiConnectionAttempts < 3) {
         try {
           // Execute the code using the API
-          result = await executeCode(combinedCode, 'python');
-          
+          result = await executeCode(combinedCode, "python");
+
           // If we get here, the API is working
           setApiConnectionAttempts(0);
         } catch (error) {
-          console.error("API execution failed, falling back to local execution:", error);
-          
+          console.error(
+            "API execution failed, falling back to local execution:",
+            error,
+          );
+
           // Increment the API connection attempt counter
-          setApiConnectionAttempts(prev => prev + 1);
-          
+          setApiConnectionAttempts((prev) => prev + 1);
+
           // If we've failed 3 times, switch to local fallback
           if (apiConnectionAttempts >= 2) {
             setUseLocalFallback(true);
           }
-          
+
           // Use local fallback for this attempt
-          result = await executeCodeLocally(combinedCode, 'python');
+          result = await executeCodeLocally(combinedCode, "python");
         }
       } else {
         // Use local fallback execution
-        result = await executeCodeLocally(combinedCode, 'python');
+        result = await executeCodeLocally(combinedCode, "python");
       }
-      
+
       setCodeExecutionResult(result);
     } catch (error) {
       console.error("Failed to run code:", error);
       setCodeExecutionResult({
         success: false,
-        output: '',
-        error: `Failed to run code: ${String(error)}`
+        output: "",
+        error: `Failed to run code: ${String(error)}`,
       });
     } finally {
       setIsRunning(false);
@@ -719,7 +801,7 @@ function RunPythonButton({
               clipRule="evenodd"
             />
           </svg>
-          Run Python {useLocalFallback && '(Local Mode)'}
+          Run Python {useLocalFallback && "(Local Mode)"}
         </>
       )}
     </button>

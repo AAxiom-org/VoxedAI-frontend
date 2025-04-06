@@ -43,21 +43,21 @@ export async function uploadFile(
 
     if (uploadError) {
       console.error("Storage upload error:", uploadError);
-      
+
       // Handle JWT expired errors specifically
       if (
-        (uploadError as any).statusCode === '403' && 
-        uploadError.message === 'jwt expired' && 
+        (uploadError as any).statusCode === "403" &&
+        uploadError.message === "jwt expired" &&
         retryCount < 2
       ) {
         console.log(`JWT expired during upload, attempt ${retryCount + 1}/3`);
         return {
           success: false,
           error: "Authentication token expired. Will retry with new token.",
-          shouldRetryWithNewToken: true
+          shouldRetryWithNewToken: true,
         };
       }
-      
+
       // Return specific error for unsupported file type
       if (uploadError.message && uploadError.message.includes("content type")) {
         return {
@@ -99,17 +99,19 @@ export async function uploadFile(
 
     if (dbError) {
       console.error("Database insert error:", dbError);
-      
+
       // Handle JWT expired errors for database operations
-      if (dbError.code === 'PGRST301' && retryCount < 2) {
-        console.log(`JWT expired during database insert, attempt ${retryCount + 1}/3`);
+      if (dbError.code === "PGRST301" && retryCount < 2) {
+        console.log(
+          `JWT expired during database insert, attempt ${retryCount + 1}/3`,
+        );
         return {
           success: false,
           error: "Authentication token expired. Will retry with new token.",
-          shouldRetryWithNewToken: true
+          shouldRetryWithNewToken: true,
         };
       }
-      
+
       throw dbError;
     }
 
@@ -125,19 +127,23 @@ export async function uploadFile(
     };
   } catch (error) {
     console.error("Error uploading file:", error);
-    
+
     // Check for authentication-related errors
     const errorStr = String(error);
-    if ((errorStr.includes('401') || errorStr.includes('403') || 
-         errorStr.includes('jwt') || errorStr.includes('unauthorized')) && 
-        retryCount < 2) {
+    if (
+      (errorStr.includes("401") ||
+        errorStr.includes("403") ||
+        errorStr.includes("jwt") ||
+        errorStr.includes("unauthorized")) &&
+      retryCount < 2
+    ) {
       return {
         success: false,
         error: "Authentication error. Will retry with new token.",
-        shouldRetryWithNewToken: true
+        shouldRetryWithNewToken: true,
       };
     }
-    
+
     return { success: false, error };
   }
 }
@@ -177,10 +183,17 @@ export async function getSpaceFiles(
 export async function deleteFile(
   fileId: string,
   retryCount: number = 0,
-): Promise<{ success: boolean; error?: any; shouldRetryWithNewToken?: boolean; message?: string }> {
+): Promise<{
+  success: boolean;
+  error?: any;
+  shouldRetryWithNewToken?: boolean;
+  message?: string;
+}> {
   try {
-    console.log(`[DEBUG] Deleting file ${fileId} using consolidated API endpoint`);
-    
+    console.log(
+      `[DEBUG] Deleting file ${fileId} using consolidated API endpoint`,
+    );
+
     const response = await fetch(
       `https://voxed.aidanandrews.org/api/v1/files/${fileId}`,
       {
@@ -193,46 +206,58 @@ export async function deleteFile(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error(`[DEBUG] API deletion failed with status ${response.status}:`, errorData);
-      
+      console.error(
+        `[DEBUG] API deletion failed with status ${response.status}:`,
+        errorData,
+      );
+
       // Handle authentication errors
-      if ((response.status === 401 || response.status === 403) && retryCount < 2) {
+      if (
+        (response.status === 401 || response.status === 403) &&
+        retryCount < 2
+      ) {
         return {
           success: false,
           error: "Authentication error. Will retry with new token.",
-          shouldRetryWithNewToken: true
+          shouldRetryWithNewToken: true,
         };
       }
-      
-      return { 
-        success: false, 
-        error: errorData.message || `API returned error status: ${response.status}`,
-        message: errorData.message || `API returned error status: ${response.status}`
+
+      return {
+        success: false,
+        error:
+          errorData.message || `API returned error status: ${response.status}`,
+        message:
+          errorData.message || `API returned error status: ${response.status}`,
       };
     }
 
     const result = await response.json();
     console.log("[DEBUG] File deletion API response:", result);
-    
-    return { 
+
+    return {
       success: true,
-      message: result.message
+      message: result.message,
     };
   } catch (error) {
     console.error("[DEBUG] Error in deleteFile:", error);
-    
+
     // Check for authentication-related errors
     const errorStr = String(error);
-    if ((errorStr.includes('401') || errorStr.includes('403') || 
-         errorStr.includes('jwt') || errorStr.includes('unauthorized')) && 
-        retryCount < 2) {
+    if (
+      (errorStr.includes("401") ||
+        errorStr.includes("403") ||
+        errorStr.includes("jwt") ||
+        errorStr.includes("unauthorized")) &&
+      retryCount < 2
+    ) {
       return {
         success: false,
         error: "Authentication error. Will retry with new token.",
-        shouldRetryWithNewToken: true
+        shouldRetryWithNewToken: true,
       };
     }
-    
+
     return { success: false, error };
   }
 }
@@ -314,27 +339,29 @@ export async function uploadAndProcessFile(
   getClientFn: () => Promise<any>,
   isNote: boolean = false,
 ): Promise<{
-  success: boolean,
-  data?: SpaceFile,
-  error?: any,
-  tempId: string,
-  isProcessing?: boolean,
-  message?: string,
+  success: boolean;
+  data?: SpaceFile;
+  error?: any;
+  tempId: string;
+  isProcessing?: boolean;
+  message?: string;
 }> {
   // Create a temporary ID to track the uploading state
   const tempId = `temp-${Date.now()}`;
-  
+
   // Function to handle file upload with retry logic
   const uploadWithRetry = async (retryCount = 0): Promise<any> => {
     try {
       // Get authenticated Supabase client - force refresh if retry
-      const authClient = await (retryCount > 0 
-        ? refreshTokenFn().then(() => getClientFn()) 
+      const authClient = await (retryCount > 0
+        ? refreshTokenFn().then(() => getClientFn())
         : getClientFn());
 
       if (!authClient) {
         console.error("Failed to get authenticated Supabase client");
-        throw new Error("Authentication error. Please try again or refresh the page.");
+        throw new Error(
+          "Authentication error. Please try again or refresh the page.",
+        );
       }
 
       // Upload to Supabase
@@ -344,12 +371,14 @@ export async function uploadAndProcessFile(
         spaceId,
         userId,
         authClient,
-        retryCount
+        retryCount,
       );
 
       // If token expired and we should retry with a new token
       if (!result.success && result.shouldRetryWithNewToken && retryCount < 2) {
-        console.log(`Retrying upload with refreshed token, attempt ${retryCount + 1}/3`);
+        console.log(
+          `Retrying upload with refreshed token, attempt ${retryCount + 1}/3`,
+        );
         // Force refresh the token and retry
         await refreshTokenFn();
         return uploadWithRetry(retryCount + 1);
@@ -358,19 +387,21 @@ export async function uploadAndProcessFile(
       return result;
     } catch (err) {
       console.error(`Error uploading file (attempt ${retryCount + 1}/3):`, err);
-      
+
       // If we haven't retried too many times and this looks like an auth error, retry
       const errorMsg = String(err).toLowerCase();
-      if (retryCount < 2 && 
-          (errorMsg.includes('jwt') || 
-           errorMsg.includes('unauthorized') || 
-           errorMsg.includes('403') || 
-           errorMsg.includes('401'))) {
+      if (
+        retryCount < 2 &&
+        (errorMsg.includes("jwt") ||
+          errorMsg.includes("unauthorized") ||
+          errorMsg.includes("403") ||
+          errorMsg.includes("401"))
+      ) {
         console.log("Auth error detected, refreshing token and retrying...");
         await refreshTokenFn();
         return uploadWithRetry(retryCount + 1);
       }
-      
+
       throw err;
     }
   };
@@ -384,9 +415,9 @@ export async function uploadAndProcessFile(
         success: false,
         error: result.error || "Failed to upload file",
         tempId,
-        message: result.fileType 
+        message: result.fileType
           ? `Unsupported file type: ${result.fileType}. Please try a different file.`
-          : result.error || "Failed to upload file"
+          : result.error || "Failed to upload file",
       };
     }
 
@@ -402,7 +433,7 @@ export async function uploadAndProcessFile(
       data: newFile,
       tempId,
       isProcessing: true,
-      message: result.message || "File uploaded, AI is now processing..."
+      message: result.message || "File uploaded, AI is now processing...",
     };
   } catch (err) {
     console.error("Error uploading file:", err);
@@ -410,7 +441,7 @@ export async function uploadAndProcessFile(
       success: false,
       error: "An error occurred while uploading the file",
       tempId,
-      message: "Error uploading file"
+      message: "Error uploading file",
     };
   }
 }
@@ -426,7 +457,7 @@ export async function deleteFileWithRetry(
   fileId: string,
   refreshTokenFn: () => Promise<void>,
   getClientFn: () => Promise<any>,
-): Promise<{ success: boolean, error?: any }> {
+): Promise<{ success: boolean; error?: any }> {
   getClientFn;
   // Function to handle file deletion with retry logic
   const deleteWithRetryInternal = async (retryCount = 0): Promise<any> => {
@@ -442,7 +473,9 @@ export async function deleteFileWithRetry(
 
       // If token expired and we should retry with a new token
       if (!result.success && result.shouldRetryWithNewToken && retryCount < 2) {
-        console.log(`Retrying deletion with refreshed token, attempt ${retryCount + 1}/3`);
+        console.log(
+          `Retrying deletion with refreshed token, attempt ${retryCount + 1}/3`,
+        );
         // Force refresh the token and retry
         await refreshTokenFn();
         return deleteWithRetryInternal(retryCount + 1);
@@ -451,19 +484,21 @@ export async function deleteFileWithRetry(
       return result;
     } catch (err) {
       console.error(`Error deleting file (attempt ${retryCount + 1}/3):`, err);
-      
+
       // If we haven't retried too many times and this looks like an auth error, retry
       const errorMsg = String(err).toLowerCase();
-      if (retryCount < 2 && 
-          (errorMsg.includes('jwt') || 
-           errorMsg.includes('unauthorized') || 
-           errorMsg.includes('403') || 
-           errorMsg.includes('401'))) {
+      if (
+        retryCount < 2 &&
+        (errorMsg.includes("jwt") ||
+          errorMsg.includes("unauthorized") ||
+          errorMsg.includes("403") ||
+          errorMsg.includes("401"))
+      ) {
         console.log("Auth error detected, refreshing token and retrying...");
         await refreshTokenFn();
         return deleteWithRetryInternal(retryCount + 1);
       }
-      
+
       throw err;
     }
   };
@@ -473,9 +508,9 @@ export async function deleteFileWithRetry(
     return await deleteWithRetryInternal();
   } catch (err) {
     console.error("Error in deleteFileWithRetry:", err);
-    return { 
-      success: false, 
-      error: err instanceof Error ? err.message : "Unknown error deleting file" 
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error deleting file",
     };
   }
 }
