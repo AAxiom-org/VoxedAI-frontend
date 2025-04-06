@@ -10,6 +10,7 @@ import { useUser, useAuth } from "@clerk/clerk-react";
 import {
   syncUserWithSupabase,
   createSupabaseClientWithToken,
+  isClientValid,
 } from "../services/supabase";
 
 interface UserContextType {
@@ -88,9 +89,10 @@ export function UserProvider({ children }: UserProviderProps) {
     if (!user || refreshInProgress) return cachedClient;
 
     // Add a time-based throttle to prevent excessive refreshes
-    // Only refresh if at least 30 seconds have passed since the last request
+    // Only refresh if at least 10 seconds have passed since the last request
+    // Reduced from 30 seconds to avoid 401 errors in production
     const now = Date.now();
-    if (now - lastTokenRequestTime < 30000) {
+    if (now - lastTokenRequestTime < 10000) {
       console.log("Token refresh throttled - too many requests");
       return cachedClient;
     }
@@ -111,12 +113,12 @@ export function UserProvider({ children }: UserProviderProps) {
       // Update cache and timestamps
       setCachedClient(client);
       setLastTokenRequestTime(Date.now());
-      // Set token expiration (setting to 10 minutes - more conservative than the default)
-      setTokenExpiresAt(Date.now() + 10 * 60 * 1000);
+      // Set token expiration (setting to 8 minutes - more conservative than before)
+      setTokenExpiresAt(Date.now() + 8 * 60 * 1000);
       setTokenValidated(true);
 
       console.log(
-        "Successfully refreshed Supabase token with expiry in 10 minutes",
+        "Successfully refreshed Supabase token with expiry in 8 minutes",
       );
       return client;
     } catch (err) {
@@ -134,36 +136,30 @@ export function UserProvider({ children }: UserProviderProps) {
 
     const now = Date.now();
 
-    // More conservative token refresh policy:
-    // 1. If token is expired
-    // 2. Or if token will expire in the next 2 minutes AND we haven't refreshed in the last 30 seconds
-    // 3. Or if we don't have a cached client
-    const tokenExpired = now > tokenExpiresAt;
-    const tokenExpiringSoon = now > tokenExpiresAt - 2 * 60 * 1000;
-    const recentlyRefreshed = now - lastTokenRequestTime < 30000;
-
-    // Only consider validation status for the initial refresh
-    const needsInitialValidation = !tokenValidated && !cachedClient;
-
-    const needsRefresh =
-      !cachedClient ||
-      tokenExpired ||
-      (tokenExpiringSoon && !recentlyRefreshed) ||
-      needsInitialValidation;
-
-    if (needsRefresh) {
-      console.log("Token expired or expiring soon, refreshing...");
-      return refreshSupabaseToken();
+    // If we have a cached client, verify it's still valid first
+    if (cachedClient) {
+      // If token was recently refreshed, assume it's still valid
+      if (now - lastTokenRequestTime < 60000) { // 1 minute
+        return cachedClient;
+      }
+      
+      // Check if cached client is still valid with a test query
+      const isValid = await isClientValid(cachedClient);
+      
+      if (isValid) {
+        return cachedClient;
+      } else {
+        console.log("Cached client invalid, refreshing token...");
+        return refreshSupabaseToken();
+      }
     }
-
-    // Use cached client if it's still valid
-    return cachedClient;
+    
+    // No cached client, get a fresh token
+    return refreshSupabaseToken();
   }, [
     user,
     cachedClient,
-    tokenExpiresAt,
     refreshSupabaseToken,
-    tokenValidated,
     lastTokenRequestTime,
   ]);
 
