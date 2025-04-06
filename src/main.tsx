@@ -25,10 +25,19 @@ const queryClient = new QueryClient({
   },
 });
 
+const localization = {
+  signIn: {
+    start: {
+      subtitle: 'Welcome Back To Your Second Brain!',
+    }
+  },
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ClerkProvider
+        localization={localization}
         domain=".voxed.ai"
         publishableKey={PUBLISHABLE_KEY}
         routerPush={(to) => (window.location.href = to)}
@@ -42,8 +51,28 @@ createRoot(document.getElementById("root")!).render(
             ? dark
             : undefined,
           variables: {
-            colorPrimary: "#E84A27",
-            colorTextOnPrimaryBackground: "#FFFFFF",
+            colorPrimary: "#0072d5",
+            colorTextOnPrimaryBackground: "#161616",
+          },
+          elements: {
+            header: {
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              textAlign: "left",
+            },
+            footer: {
+              backgroundColor: "transparent",
+              background: "transparent",
+            },
+            ...Object.fromEntries([
+              // All core elements
+              'card', 'form', 'cardBox', 'rootBox', 'popoverBox', 'actionCard'
+            ].map(elem => [elem, {
+              boxShadow: "none",
+              border: "none",
+              shadow: "none"
+            }]))
           },
         }}
       >

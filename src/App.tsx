@@ -5,7 +5,7 @@ import { Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 // Marketing Pages
-import SignInUp from "./pages/auth/SignIn-Up";
+import SignInPage from "./pages/auth/SignIn";
 import Header from "./components/common/Header";
 
 // Contexts / Light Weight Files
@@ -13,7 +13,8 @@ import { UserProvider } from "./contexts/UserContext";
 import { useTheme } from "./contexts/ThemeContext";
 import TokenRefresher from "./components/common/TokenRefresher";
 import LoadingSpinner from "./components/common/LoadingSpinner";
-
+import SignUpPage from "./pages/auth/SignUp";
+import WaitlistPage from "./pages/auth/Waitlist";
 // Web App - Lazy loaded components
 const Sandbox = lazy(() => import("./components/code/Sandbox"));
 const SpaceUI = lazy(() => import("./pages/Space"));
@@ -78,7 +79,7 @@ export default function App() {
             element={
               <>
                 <SignedOut>
-                  <SignInUp />
+                  <SignInPage />
                 </SignedOut>
                 <SignedIn>
                   <Navigate to="/spaces" />
@@ -92,7 +93,7 @@ export default function App() {
             element={
               <>
                 <SignedOut>
-                  <SignInUp />
+                  <SignUpPage />
                 </SignedOut>
                 <SignedIn>
                   <Navigate to="/spaces" />
@@ -101,6 +102,15 @@ export default function App() {
             }
           />
 
+          <Route
+            path="/waitlist"
+            element={
+              <>
+                <WaitlistPage />
+              </>
+            }
+          />
+          
           {/* Web App - Wrap lazy-loaded components with Suspense */}
           <Route
             path="/spaces"
