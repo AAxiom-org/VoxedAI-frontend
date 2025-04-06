@@ -6,6 +6,7 @@ import "@blocknote/mantine/style.css";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSupabaseUser } from "../../contexts/UserContext";
 import ReactDiffViewer from "react-diff-viewer";
+import { useLayoutState } from "../../hooks/useLayoutState";
 
 // Define proper types for the BlockNoteEditor props
 interface BlockNoteEditorProps {
@@ -15,6 +16,8 @@ interface BlockNoteEditorProps {
   onSave: (content: string) => void;
   noteName: string;
   isChild?: boolean; // Optional flag to determine state management approach
+  isLoading?: boolean;
+  setIsLoading?: (isLoading: boolean) => void;
 }
 
 // Error boundary component to catch errors in BlockNoteView
@@ -113,14 +116,22 @@ const BlockNoteEditor = ({
   onSave,
   noteName,
   isChild = false,
+  isLoading: propIsLoading,
+  setIsLoading: propSetIsLoading,
 }: BlockNoteEditorProps) => {
   const { theme } = useTheme();
   const [initialContentSet, setInitialContentSet] = useState<boolean>(false);
   const [content, setContent] = useState<string>(noteContent);
-  const [isLoading, setIsLoading] = useState<boolean>(!noteContent);
+  const [localIsLoading, localSetIsLoading] = useState<boolean>(!noteContent);
+  
+  // Use props if provided, otherwise use local state
+  const isLoading = propIsLoading !== undefined ? propIsLoading : localIsLoading;
+  const setIsLoading = propSetIsLoading || localSetIsLoading;
+  
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<BlockNoteEditorCore | null>(null);
   const { getSupabaseClient } = useSupabaseUser();
+  const [layout] = useLayoutState();
 
   // Add state for virtual note functionality
   const [virtualNoteContent, setVirtualNoteContent] = useState<string | null>(
@@ -741,27 +752,29 @@ const BlockNoteEditor = ({
 
   // Renders the editor instance using a React component.
   return (
-    <div className="w-full h-full flex flex-col relative overflow-hidden">
-      <div className="p-2 flex items-center z-10 border-b">
-        <div className="relative w-full">
-          <div className="space-x-2 cursor-pointer flex items-center w-full px-2 py-1 text-sm font-medium text-left text-adaptive transition-all duration-200">
-            <span className="truncate flex items-center">
-              {noteName}
-              <span
-                className={`ml-2 text-xs transition-opacity duration-300 ${isLoading ? "text-yellow-500" : error ? "text-red-500" : "text-green-500"}`}
-              >
-                {isLoading ? "loading..." : error ? "error loading" : "loaded"}
+    <div className="w-full h-full flex flex-col relative overflow-hidden pt-2">
+      {layout.selectedView != "brain" && (
+        <div className="p-2 flex items-center border-b">
+          <div className="relative w-full">
+            <div className="space-x-2 flex items-center w-full px-2 py-1 text-sm font-medium text-left text-adaptive transition-all duration-200">
+              <span className="truncate flex items-center">
+                {noteName}
+                <span
+                  className={`ml-2 text-xs transition-opacity duration-300 ${isLoading ? "text-yellow-500" : error ? "text-red-500" : "text-green-500"}`}
+                >
+                  {isLoading ? "saving..." : error ? "error saving" : "saved"}
+                </span>
               </span>
-            </span>
-            <button
-              onClick={onClose}
-              className="px-3 py-1 bg-card hover:bg-hover rounded-md text-sm transition-all duration-200"
-            >
-              Close
-            </button>
+              <button
+                onClick={onClose}
+                className="px-3 py-1 bg-card hover:bg-hover rounded-md text-sm transition-all duration-200 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="flex-1 overflow-auto w-full">
         {error && (
