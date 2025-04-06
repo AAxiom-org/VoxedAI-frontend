@@ -1,12 +1,12 @@
-import { SignUp } from "@clerk/clerk-react";
+import { SignIn } from "@clerk/clerk-react";
 
-export default function SignUpPage() {
+export default function SignInPage() {
   return (
     <div className="flex justify-center items-center h-screen">
-      <SignUp
-        fallbackRedirectUrl={"/sign-up"}
+      <SignIn 
+        fallbackRedirectUrl={"/sign-in"}
         forceRedirectUrl={"/spaces"}
-        signInUrl={"/sign-in"}
+        signUpUrl={"/sign-up"}
         waitlistUrl={"/waitlist"}
       />
     </div>
