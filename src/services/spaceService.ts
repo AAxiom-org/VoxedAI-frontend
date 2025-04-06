@@ -484,6 +484,8 @@ export async function sendAndStreamChatMessage(
   error?: string;
 }> {
   try {
+    isNoteQuestion;
+    noteContent;
     // Send user message to backend
     const userMessageResult = await sendChatMessage(
       chatSessionId,

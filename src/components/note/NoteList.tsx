@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Loader, Plus } from 'lucide-react';
 import { SpaceFile } from '../../types/space';
-import toast from 'react-hot-toast';
 import { useUser } from '@clerk/clerk-react';
 
 // Extended file type with visibility state

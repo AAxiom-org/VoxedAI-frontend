@@ -20,7 +20,6 @@ import { UserProvider } from "./contexts/UserContext";
 import { useTheme } from "./contexts/ThemeContext";
 import TokenRefresher from "./components/common/TokenRefresher";
 import LoadingSpinner from "./components/common/LoadingSpinner";
-import AgentWorkflowIndicator from './pages/Test';
 
 // Web App - Lazy loaded components
 const Sandbox = lazy(() => import("./components/code/Sandbox"));
@@ -91,14 +90,6 @@ export default function App() {
                 <SignedIn>
                   <Navigate to="/spaces" />
                 </SignedIn>
-              </>
-            }
-          />
-          <Route
-            path="/test"
-            element={
-              <>
-                <AgentWorkflowIndicator />
               </>
             }
           />

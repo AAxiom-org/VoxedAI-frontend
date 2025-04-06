@@ -63,6 +63,7 @@ const BrainInterface = ({
     const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
     const [isCreatingBrainNote, setIsCreatingBrainNote] = useState<boolean>(false);
     const [layout, setLayout] = useLayoutState();
+    layout;
     const { getSupabaseClient, supabaseUserId } = useSupabaseUser();
     
     // Fetch brain note and recent entries when component mounts
@@ -236,6 +237,7 @@ const BrainInterface = ({
     // Save brain note content - using the approach from NotesInterface
     const handleSaveBrainNote = useCallback(async (content: string) => {
         if (!brainNoteId || !brainNote?.file_path) return;
+        if (isSavingNote) return;
         
         // Set saving state to avoid duplicate saves
         setIsSavingNote(true);

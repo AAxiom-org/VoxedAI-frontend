@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
-import { ClipboardIcon, CheckIcon, ChevronDown, BrainCircuit, Search, File, Code, Terminal, AlertCircle, RefreshCw, CheckCircle, Clock, ChevronRight } from "lucide-react";
+import { ClipboardIcon, CheckIcon, ChevronDown, BrainCircuit, Search, File, Code, Terminal, AlertCircle, RefreshCw, ChevronRight } from "lucide-react";
 import { ChatMessage, ReasoningData } from "../../types/chat";
 import { type Model, DEFAULT_MODEL, MODELS, MODEL_DISPLAY_NAMES } from "../../types/models";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -172,7 +172,6 @@ const getStatusBadge = (eventType: string) => {
 // Agent timeline component to display workflow
 const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
   const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
-  const [lastProcessedEvent, setLastProcessedEvent] = useState<string | null>(null);
   const [currentTransitionIndex, setCurrentTransitionIndex] = useState<number | null>(null);
 
   const toggleEvent = (index: number) => {
@@ -188,9 +187,6 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
   // Check for the last event to determine if we're still processing actions
   useEffect(() => {
     if (safeEvents.length > 0) {
-      const lastEvent = safeEvents[safeEvents.length - 1];
-      setLastProcessedEvent(lastEvent.event_type);
-      
       // Set the current transition to be the one before the last event
       if (safeEvents.length > 1) {
         setCurrentTransitionIndex(safeEvents.length - 2);
@@ -198,7 +194,7 @@ const AgentTimeline = ({ events = [] }: { events: AgentEvent[] }) => {
         setCurrentTransitionIndex(null);
       }
     }
-  }, [events]);
+  }, [safeEvents]);
 
   // Define transition animations
   const transitionAnimations = `
@@ -402,7 +398,6 @@ const ChatView = ({
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const [lastMessageCount, setLastMessageCount] = useState(0);
   const [endSpacerHeight, setEndSpacerHeight] = useState(64);
-  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   
@@ -444,18 +439,6 @@ const ChatView = ({
     }
   };
 
-  // Check if user is currently scrolled to the bottom of the chat
-  const checkIfUserAtBottom = () => {
-    if (!messageContainerRef.current) return false;
-    
-    const { scrollTop, scrollHeight, clientHeight } = messageContainerRef.current;
-    // Consider "at bottom" if within 100px of the bottom
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
-    setIsUserAtBottom(isAtBottom);
-    setShowScrollBottom(!isAtBottom);
-    return isAtBottom;
-  };
-
   // Calculate the appropriate spacing based on content
   const calculateSpacerHeight = () => {
     if (!messageContainerRef.current || !messagesEndRef.current) return;
@@ -488,19 +471,15 @@ const ChatView = ({
     // Only auto-scroll on first load
     scrollToBottom('auto');
     calculateSpacerHeight();
-    setIsUserAtBottom(true);
-    setShowScrollBottom(false);
     
     // Set up resize observer to recalculate heights when window resizes
     const resizeObserver = new ResizeObserver(() => {
       calculateSpacerHeight();
-      checkIfUserAtBottom();
     });
     
     // Add scroll event listener to update spacer height during scrolling
     const handleScroll = () => {
       calculateSpacerHeight();
-      checkIfUserAtBottom();
     };
     
     if (messageContainerRef.current) {
@@ -572,7 +551,7 @@ const ChatView = ({
     if (isStreaming && streamingContent) {
       // Extract both reasoning and agent events
       const { text: textWithoutReasoning, reasoning } = extractReasoning(streamingContent);
-      const { text, events } = extractAgentEvents(textWithoutReasoning);
+      const { events } = extractAgentEvents(textWithoutReasoning);
       
       // If reasoning exists in the streaming content
       if (reasoning) {
@@ -586,9 +565,8 @@ const ChatView = ({
         setShowAgentEvents(true);
       }
       
-      // Calculate spacer height and check scroll position
+      // Calculate spacer height
       calculateSpacerHeight();
-      checkIfUserAtBottom();
     }
   }, [isStreaming, streamingContent]);
   
@@ -647,7 +625,7 @@ const ChatView = ({
   // Just update the scroll indicator when streaming completes
   useEffect(() => {
     if (!isStreaming && lastMessageCount < messages.length) {
-      checkIfUserAtBottom();
+      calculateSpacerHeight();
     }
   }, [isStreaming, messages.length, lastMessageCount]);
   

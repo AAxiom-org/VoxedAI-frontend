@@ -1,7 +1,7 @@
-import { SandpackProvider, SandpackLayout, SandpackCodeEditor, SandpackPreview, SandpackConsole, UnstyledOpenInCodeSandboxButton, useSandpack } from "@codesandbox/sandpack-react";
+import { SandpackProvider, SandpackCodeEditor } from "@codesandbox/sandpack-react";
 import { useState, useEffect, useRef } from "react";
 import languageFiles from "../../utils/codeExamples";
-import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
+import { autocompletion } from "@codemirror/autocomplete";
 import { githubLight, atomDark } from "@codesandbox/sandpack-themes";
 import { FaColumns, FaChevronDown, FaEyeSlash, FaPlus, FaTrash, FaSortDown, FaSortUp, FaKey } from "react-icons/fa";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -12,8 +12,10 @@ import { python } from "@codemirror/lang-python";
 
 import { executeCode, executeCodeLocally, CodeExecutionResponse } from "../../services/codeRunnerService";
 
-type SandpackLayoutMode = "preview" | "tests" | "console";
-type ConsoleLayoutMode = "side-by-side" | "below" | "collapsed";
+// Define custom types for our component
+interface ConsoleLayoutMode {
+  mode: "side-by-side" | "below" | "collapsed";
+}
 
 // Define the file structure with metadata
 interface FileData {
@@ -29,7 +31,12 @@ interface Files {
 }
 
 // Custom console output component
-const CustomConsoleOutput = ({ result, setCodeExecutionResult, setLayoutMode, isRunning, setIsRunning }: { result: CodeExecutionResponse | null, setCodeExecutionResult: React.Dispatch<React.SetStateAction<CodeExecutionResponse | null>>, setLayoutMode: React.Dispatch<React.SetStateAction<SandpackLayoutMode>>, isRunning: boolean, setIsRunning: React.Dispatch<React.SetStateAction<boolean>> }) => {
+const CustomConsoleOutput = ({ result, setCodeExecutionResult, isRunning, setIsRunning }: { 
+  result: CodeExecutionResponse | null, 
+  setCodeExecutionResult: React.Dispatch<React.SetStateAction<CodeExecutionResponse | null>>, 
+  isRunning: boolean, 
+  setIsRunning: React.Dispatch<React.SetStateAction<boolean>> 
+}) => {
   
   const renderWithLineNumbers = (text: string | undefined) => {
     if (!text) return null;
@@ -59,8 +66,6 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, setLayoutMode, is
         <div className="p-4 text-adaptive flex flex-col justify-center items-center space-y-4">
           <p>Run your code to see output here.</p>
           <RunPythonButton
-            files={{}}
-            fileKeys={[]}
             getOrderedFiles={() => []} 
             setCodeExecutionResult={setCodeExecutionResult}
             toggleConsoleLayoutRunButton={() => {}}
@@ -154,10 +159,9 @@ const CustomConsoleOutput = ({ result, setCodeExecutionResult, setLayoutMode, is
 export default function Sandbox() {
   const { theme } = useTheme();
   const { getSupabaseClient, refreshSupabaseToken } = useSupabaseUser();
-  const [layoutMode, setLayoutMode] = useState<SandpackLayoutMode>("console");
   const [codeExecutionResult, setCodeExecutionResult] = useState<CodeExecutionResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [consoleLayout, setConsoleLayout] = useState<ConsoleLayoutMode>("collapsed");
+  const [consoleLayout, setConsoleLayout] = useState<ConsoleLayoutMode>({ mode: "collapsed" });
   const [files, setFiles] = useState<Files>({});
   const [fileKeys, setFileKeys] = useState<string[]>([]);
   const [activeFile, setActiveFile] = useState<string>("/main.py");
@@ -364,21 +368,21 @@ export default function Sandbox() {
 
   // Console layout toggle handler
   const toggleConsoleLayout = () => {
-    const layouts: ConsoleLayoutMode[] = ["below", "side-by-side", "collapsed"];
+    const layouts: ConsoleLayoutMode[] = [{ mode: "below" }, { mode: "side-by-side" }, { mode: "collapsed" }];
     const currentIndex = layouts.indexOf(consoleLayout);
     const nextIndex = (currentIndex + 1) % layouts.length;
     setConsoleLayout(layouts[nextIndex]);
   };
 
   const toggleConsoleLayoutRunButton = () => {
-    if (consoleLayout === "collapsed") {
+    if (consoleLayout.mode === "collapsed") {
       toggleConsoleLayout();
     }
   };
 
   // Function to get icon based on current layout
   const getConsoleLayoutIcon = () => {
-    switch (consoleLayout) {
+    switch (consoleLayout.mode) {
       case "side-by-side":
         return <FaColumns className="mr-1" />;
       case "below":
@@ -388,21 +392,9 @@ export default function Sandbox() {
     }
   };
 
-  // Function to get label text for the layout toggle button
-  const getConsoleLayoutLabel = () => {
-    switch (consoleLayout) {
-      case "below":
-        return "Below";
-      case "side-by-side":
-        return "Side";
-      case "collapsed":
-        return "Hidden";
-    }
-  };
-
   // Function to get tooltip text for the layout toggle button
   const getConsoleLayoutTooltip = () => {
-    switch (consoleLayout) {
+    switch (consoleLayout.mode) {
       case "side-by-side":
         return "Switch to console below";
       case "below":
@@ -483,8 +475,8 @@ export default function Sandbox() {
           </div>
         </div>
         
-        <div className={`h-full ${consoleLayout === "side-by-side" ? "flex gap-4" : "flex flex-col gap-4"}`}>
-          <div className={`${consoleLayout === "side-by-side" ? "w-1/2" : "w-full"}`}>
+        <div className={`h-full ${consoleLayout.mode === "side-by-side" ? "flex gap-4" : "flex flex-col gap-4"}`}>
+          <div className={`${consoleLayout.mode === "side-by-side" ? "w-1/2" : "w-full"}`}>
             <SandpackCodeEditor
               showLineNumbers={true}
               showInlineErrors={true}
@@ -493,12 +485,11 @@ export default function Sandbox() {
             />
           </div>
           
-          {consoleLayout !== "collapsed" && (
-            <div className={`${consoleLayout === "side-by-side" ? "w-1/2" : "w-full"} border border-adaptive rounded-md overflow-hidden`}>
+          {consoleLayout.mode !== "collapsed" && (
+            <div className={`${consoleLayout.mode === "side-by-side" ? "w-1/2" : "w-full"} border border-adaptive rounded-md overflow-hidden`}>
               <CustomConsoleOutput
                 result={codeExecutionResult}
                 setCodeExecutionResult={setCodeExecutionResult}
-                setLayoutMode={setLayoutMode}
                 isRunning={isRunning}
                 setIsRunning={setIsRunning}
               />
@@ -509,8 +500,6 @@ export default function Sandbox() {
         {/* File Actions */}
         <div className="pb-14 flex flex-wrap items-center gap-2">
           <RunPythonButton
-            files={files}
-            fileKeys={fileKeys}
             getOrderedFiles={getOrderedFiles}
             setCodeExecutionResult={setCodeExecutionResult}
             toggleConsoleLayoutRunButton={toggleConsoleLayoutRunButton}
@@ -614,16 +603,12 @@ export default function Sandbox() {
 
 // Run button component for Python multi-file execution
 function RunPythonButton({ 
-  files,
-  fileKeys,
   getOrderedFiles,
   setCodeExecutionResult, 
   toggleConsoleLayoutRunButton,
   isRunning, 
   setIsRunning 
 }: { 
-  files: Files,
-  fileKeys: string[],
   getOrderedFiles: () => [string, FileData][],
   setCodeExecutionResult: React.Dispatch<React.SetStateAction<CodeExecutionResponse | null>>, 
   toggleConsoleLayoutRunButton: () => void,

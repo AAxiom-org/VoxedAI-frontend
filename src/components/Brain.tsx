@@ -1,4 +1,3 @@
-import React from "react";
 import HierarchicalGraph from "./brain/Graph"
 import BrainInterface from "./brain/BrainInterface"
 import { useLayoutState } from "../hooks/useLayoutState";

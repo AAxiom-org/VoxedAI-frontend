@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
-  Library, 
   File, 
   FileText,
   FileImage,
@@ -26,7 +25,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { UserProfile } from '@clerk/clerk-react';
 import { useUser } from '@clerk/clerk-react';
 
-import toast from 'react-hot-toast';
 import type { SpaceFile } from '../types/space';
 
 // Extended file type with visibility state
@@ -92,7 +90,6 @@ const Sidebar = ({
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [filesExpanded, setFilesExpanded] = useState(false);
-  const [linksExpanded, setLinksExpanded] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(true);
   const [showNewFileMenu, setShowNewFileMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);

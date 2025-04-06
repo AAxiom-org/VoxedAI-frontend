@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
-import { getSpaceFiles, deleteFile, deleteFileWithRetry } from '../../services/fileUpload';
+import { getSpaceFiles, deleteFileWithRetry } from '../../services/fileUpload';
 import toast from 'react-hot-toast';
 import { useSupabaseUser } from '../../contexts/UserContext';
 import { useLayoutState } from '../../hooks/useLayoutState';
@@ -33,9 +32,6 @@ const NotesInterface = ({ noteId, onNoteSelect }: NotesInterfaceProps) => {
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [selectedNoteContent, setSelectedNoteContent] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { supabaseUserId, getSupabaseClient, refreshSupabaseToken } = useSupabaseUser();
 
@@ -102,7 +98,7 @@ const NotesInterface = ({ noteId, onNoteSelect }: NotesInterfaceProps) => {
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        setIsDropdownOpen(false);
+        setIsModalOpen(false);
       }
     }
 
@@ -232,9 +228,6 @@ const NotesInterface = ({ noteId, onNoteSelect }: NotesInterfaceProps) => {
       return false;
     }
 
-    setIsSaving(true);
-    setSaveError(null);
-
     try {
       const supabaseClient = await getSupabaseClient();
       const contentBlob = new Blob([content], { type: 'application/json' });
@@ -253,10 +246,7 @@ const NotesInterface = ({ noteId, onNoteSelect }: NotesInterfaceProps) => {
       return true;
     } catch (error) {
       console.error('Error saving note content:', error);
-      setSaveError('Failed to save note');
       return false;
-    } finally {
-      setIsSaving(false);
     }
   };
 

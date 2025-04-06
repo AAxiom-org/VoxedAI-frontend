@@ -1,31 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Library, 
-  File, 
-  FileText,
-  Plus, 
-  ChevronDown, 
-  ChevronRight, 
-  User, 
-  Moon, 
-  Info, 
-  LogOut,
-  Code,
-  Eye,
-  EyeOff,
   Folder,
   PanelLeftClose,
   PanelLeftOpen,
-  Sun,
-  Loader
 } from 'lucide-react';
 import ChatInterface from '../components/chat/Chat';
 import Note from '../components/Note';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Sandbox from '../components/code/Sandbox';
 import Brain from '../components/Brain';
 import { useSupabaseUser } from '../contexts/UserContext';
-import { getSpaceFiles, deleteFile, uploadAndProcessFile, processFile, deleteFileWithRetry } from '../services/fileUpload';
+import { getSpaceFiles, uploadAndProcessFile, processFile, deleteFileWithRetry } from '../services/fileUpload';
 import { getSpace } from '../services/spaceService';
 import { useMobile } from '../contexts/MobileContext';
 import type { SpaceFile } from '../types/space';
@@ -56,20 +41,18 @@ const Space = () => {
   });
 
   // Destructure layout state for easy access
-  const { sidebarOpen, filesExpanded, notesExpanded, selectedView, selectedNoteId } = layout;
+  const { sidebarOpen, selectedView, selectedNoteId } = layout;
   
   // Ensure selectedNoteId is always a string or null
   const safeSelectedNoteId: string | null = selectedNoteId || null;
   
   // State that doesn't need to be in the URL
-  const [showNewFileMenu, setShowNewFileMenu] = useState(false);
   const [files, setFiles] = useState<ExtendedFile[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(true);
   const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
   const [spaceName, setSpaceName] = useState('Space');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const dragCounterRef = useRef(0);
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [notes, setNotes] = useState<ExtendedFile[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(true);
@@ -78,18 +61,18 @@ const Space = () => {
   const { supabaseUserId, getSupabaseClient, refreshSupabaseToken } =
     useSupabaseUser();
   
-  const navigate = useNavigate();
 
   // Computed state based on selectedView
   const showChat = selectedView === 'chat';
   const showNote = selectedView === 'notes';
   const showSandbox = selectedView === 'code';
   const showBrain = selectedView === 'brain';
+  setIsDragging(false);
   
   // Update state setters to work with the layout state
   const setSidebarOpen = (open: boolean) => setLayout({ sidebarOpen: open });
-  const setFilesExpanded = (expanded: boolean) => setLayout({ filesExpanded: expanded });
-  const setNotesExpanded = (expanded: boolean) => setLayout({ notesExpanded: expanded });
+  // const setFilesExpanded = (expanded: boolean) => setLayout({ filesExpanded: expanded });
+  // const setNotesExpanded = (expanded: boolean) => setLayout({ notesExpanded: expanded });
   const setShowChat = (show: boolean) => show && setLayout({ selectedView: 'chat', selectedNoteId: null });
   const setShowNote = (show: boolean) => show && setLayout({ selectedView: 'notes' });
   const setShowSandbox = (show: boolean) => show && setLayout({ selectedView: 'code', selectedNoteId: null });
@@ -222,97 +205,6 @@ const Space = () => {
     ));
   };
 
-  // Handle drag events
-  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    dragCounterRef.current += 1;
-    
-    // Only set dragging to true if there are files
-    if (e.dataTransfer.types.includes('Files')) {
-      setIsDragging(true);
-    }
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Ensure the dragging state stays true during drag over
-    if (!isDragging && e.dataTransfer.types.includes('Files')) {
-      setIsDragging(true);
-    }
-  }, [isDragging]);
-
-  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    dragCounterRef.current -= 1;
-    
-    // Only set dragging to false when counter reaches 0
-    if (dragCounterRef.current === 0) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    dragCounterRef.current = 0;
-    
-    if (!e.dataTransfer.files || !e.dataTransfer.files.length || !spaceId || !supabaseUserId) return;
-    
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    
-    // Process each dropped file
-    for (const file of droppedFiles) {
-      try {
-        // Create a temporary ID to track the uploading state
-        const tempId = `temp-${Date.now()}-${file.name}`;
-        
-        // Add to uploading set
-        setUploadingFiles(prev => new Set(prev).add(tempId));
-        
-        const result = await uploadAndProcessFile(
-          file,
-          spaceId,
-          supabaseUserId,
-          refreshSupabaseToken,
-          getSupabaseClient,
-          false // isNote
-        );
-        
-        // Remove from uploading set
-        setUploadingFiles(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(tempId);
-          return newSet;
-        });
-        
-        if (result.success && result.data) {
-          // Add the new file to the files list
-          setFiles(prev => [
-            {
-              ...result.data,
-              visible: true,
-              isProcessing: Boolean(result.isProcessing)
-            } as ExtendedFile,
-            ...prev
-          ]);
-          
-          console.log("File uploaded successfully:", result.message);
-        } else {
-          console.error("File upload failed:", result.error);
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error);
-      }
-    }
-  }, [spaceId, supabaseUserId, refreshSupabaseToken, getSupabaseClient]);
-
   // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files.length || !spaceId || !supabaseUserId) return;
@@ -402,32 +294,6 @@ const Space = () => {
           file.id === fileId ? { ...file, isDeletingFile: false } : file
         )
       );
-    }
-  };
-
-  // Get file type icon
-  const getFileTypeIcon = (fileType: string) => {
-    if (fileType.includes('image')) {
-      return <File size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
-    } else if (fileType.includes('text') || fileType.includes('document') || fileType.includes('pdf')) {
-      return <FileText size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
-    } else if (fileType.includes('javascript') || fileType.includes('code') || fileType.includes('json') || fileType.includes('html') || fileType.includes('css')) {
-      return <Code size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
-    } else {
-      return <File size={14} className="text-gray-500 mr-2 flex-shrink-0" />;
-    }
-  };
-
-  // Format file size
-  const getFileSize = (size: number) => {
-    if (size < 1024) {
-      return `${size} bytes`;
-    } else if (size < 1024 * 1024) {
-      return `${(size / 1024).toFixed(2)} KB`;
-    } else if (size < 1024 * 1024 * 1024) {
-      return `${(size / (1024 * 1024)).toFixed(2)} MB`;
-    } else {
-      return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     }
   };
 
@@ -594,7 +460,6 @@ const Space = () => {
       // Reset the flag when done
       setIsCreatingNote(false);
       // Close the menu
-      setShowNewFileMenu(false);
       // Close the modal
       setIsNoteModalOpen(false);
     }
@@ -655,14 +520,8 @@ const Space = () => {
       setShowSandbox(true);
       setShowNote(false);
       setShowChat(false);
-      setShowNewFileMenu(false);
     }
   };
-
-  // Filter notes based on search term
-  const filteredNotes = notes.filter(note => 
-    note.file_name.toLowerCase().includes(noteSearch.toLowerCase())
-  );
 
   // Update CSS variable when sidebar width changes
   useEffect(() => {

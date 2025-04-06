@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ChatSession, ChatMessage } from "../../types/chat";
+import { useState, useEffect } from "react";
+import { ChatSession } from "../../types/chat";
 import { supabase } from "../../services/supabase";
 import { useUser } from "@clerk/clerk-react";
 import { SearchIcon, X } from "lucide-react";

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import NotesInterface from './note/index';
 import { useLayoutState } from '../hooks/useLayoutState';
 

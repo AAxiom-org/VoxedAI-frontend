@@ -44,7 +44,7 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
   });
   
   // Add the note state hook to check if a note is open
-  const { isNoteOpen, noteId, noteContent, fetchNoteContent } = useNoteState();
+  const { isNoteOpen, noteId, fetchNoteContent } = useNoteState();
   
   // Destructure values from chatState for easier access
   const { currentSessionId, selectedView, selectedModel } = chatState;
@@ -62,9 +62,6 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
   });
   const setIsInChat = (value: boolean) => setChatState({ 
     selectedView: value ? 'chat' : 'initial' 
-  });
-  const setIsInGrid = (value: boolean) => setChatState({
-    selectedView: value ? 'grid' : 'initial'
   });
 
   // Fetch chat sessions when component mounts
@@ -88,10 +85,10 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         query = query.eq("space_id", spaceId);
       }
       
-      const { data, error } = await query;
+      const { data } = await query;
 
-      if (error) {
-        console.error("Error fetching chat sessions:", error);
+      if (!data) {
+        console.error("No data returned when fetching chat sessions");
         return;
       }
 
@@ -277,7 +274,7 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         console.log("New chat - looking for the created session");
         // The backend should have created a new session and returned its ID
         // For now, we'll just get the most recent session
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("chat_sessions")
           .select("*")
           .eq("user_id", user?.id)
@@ -288,9 +285,6 @@ const ChatInterface = ({ sidebarOpen, simplified = false }: ChatInterfaceProps) 
         if (data && data.length > 0) {
           const newSession = data[0];
           console.log("Found new session:", newSession.id);
-          
-          // Store the old messages to preserve them during transition
-          const oldMessages = [...messages];
           
           // Update the session ID in the URL
           setChatState({

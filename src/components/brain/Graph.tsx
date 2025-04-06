@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 import { useSupabaseUser } from '../../contexts/UserContext';
@@ -296,7 +296,7 @@ const HierarchicalGraph = ({
   };
   
   // Render function for nodes
-  const renderNode = (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+  const renderNode = (node: GraphNode, ctx: CanvasRenderingContext2D) => {
     const label = node.label || node.id;
     const fontSize = 14; // Fixed font size
     ctx.font = `${fontSize}px sans-serif`;

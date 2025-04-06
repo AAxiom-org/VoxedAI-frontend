@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Block, BlockNoteEditor as BlockNoteEditorCore, PartialBlock } from "@blocknote/core";
+import { BlockNoteEditor as BlockNoteEditorCore } from "@blocknote/core";
 import { BlockNoteView } from '@blocknote/mantine';
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -107,16 +107,12 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChi
   const [content, setContent] = useState<string>(noteContent);
   const [isLoading, setIsLoading] = useState<boolean>(!noteContent);
   const [error, setError] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [showSaved, setShowSaved] = useState<boolean>(false);
   const editorRef = useRef<BlockNoteEditorCore | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { getSupabaseClient } = useSupabaseUser();
   
   // Add state for virtual note functionality
   const [virtualNoteContent, setVirtualNoteContent] = useState<string | null>(null);
   const [showDiffView, setShowDiffView] = useState<boolean>(false);
-  const [checkingVirtualNote, setCheckingVirtualNote] = useState<boolean>(false);
   // Add state for view mode toggle
   const [viewMode, setViewMode] = useState<'diff' | 'side-by-side'>('diff');
   
@@ -148,11 +144,9 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChi
   // Function to check for virtual note existence and fetch its content
   const checkForVirtualNote = useCallback(async () => {
     try {
-      setCheckingVirtualNote(true);
       const virtualPath = await getVirtualNotePath(noteId);      
       if (!virtualPath) {
         setVirtualNoteContent(null);
-        setCheckingVirtualNote(false);
         return;
       }
       
@@ -168,7 +162,6 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChi
       if (checkError || !fileExists || !fileExists.find((file: { name: string }) => 
         file.name === virtualPath.split('/').pop())) {
         setVirtualNoteContent(null);
-        setCheckingVirtualNote(false);
         return;
       }
       
@@ -180,7 +173,6 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChi
       
       if (virtualNoteError) {
         setVirtualNoteContent(null);
-        setCheckingVirtualNote(false);
         return;
       }
       
@@ -199,8 +191,6 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChi
     } catch (error) {
       console.error("Error checking for virtual note:", error);
       setVirtualNoteContent(null);
-    } finally {
-      setCheckingVirtualNote(false);
     }
   }, [noteId, getVirtualNotePath, getSupabaseClient]);
   
@@ -405,11 +395,10 @@ const BlockNoteEditor = ({ onClose, noteId, noteContent, onSave, noteName, isChi
         const markdown = await editorRef.current?.blocksToMarkdownLossy();
         if (markdown) {
           const supabaseClient = await getSupabaseClient();
-          const { data, error } = await supabaseClient
+          const { error } = await supabaseClient
             .from('space_files')
             .update({ note_content: markdown })
-            .eq('id', noteId)
-            .select();
+            .eq('id', noteId);
           
           if (error) {
             console.error("Error updating note content:", error);

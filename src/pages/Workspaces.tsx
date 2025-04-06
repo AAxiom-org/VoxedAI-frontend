@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Workspace as BaseWorkspace, Space } from '../types/space';
+import { Workspace as BaseWorkspace } from '../types/space';
 import { useSupabaseUser } from '../contexts/UserContext';
 import { 
   getUserWorkspacesHierarchy, 
@@ -425,7 +425,7 @@ const SpaceGalleryUI: React.FC = () => {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [spaces, setSpaces] = useState<SpaceItem[]>([]);
   const [workspaceToDelete, setWorkspaceToDelete] = useState<WorkspaceToDelete | null>(null);
-  const { supabaseUserId, isLoading: isUserLoading } = useSupabaseUser();
+  const { supabaseUserId } = useSupabaseUser();
   const navigate = useNavigate();
   
   // Update state setters to work with the filter state
@@ -612,32 +612,6 @@ const SpaceGalleryUI: React.FC = () => {
       console.error("Error loading workspaces and spaces:", err);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Handle workspace creation
-  const handleCreateWorkspace = async (workspaceData: { title: string; description: string; parentId?: string }) => {
-    if (!supabaseUserId) return;
-    
-    try {
-      const result = await createWorkspace(
-        supabaseUserId,
-        workspaceData.title,
-        workspaceData.description,
-        workspaceData.parentId
-      );
-
-      if (result.success) {
-        // Refresh workspace list
-        loadWorkspacesAndSpaces();
-        return true;
-      } else {
-        console.error("Failed to create workspace:", result.error);
-        return false;
-      }
-    } catch (err) {
-      console.error("Error creating workspace:", err);
-      return false;
     }
   };
 
