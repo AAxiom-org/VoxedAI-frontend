@@ -45,12 +45,8 @@ export function UserProvider({ children }: UserProviderProps) {
   const [lastTokenRequestTime, setLastTokenRequestTime] = useState(0);
   // Cache for the Supabase client
   const [cachedClient, setCachedClient] = useState<any>(null);
-  // Token expiration time - setting to a more conservative value
-  const [tokenExpiresAt, setTokenExpiresAt] = useState(0);
   // Add a flag to track refresh in progress
   const [refreshInProgress, setRefreshInProgress] = useState(false);
-  // Add a flag to track if the token has been validated
-  const [tokenValidated, setTokenValidated] = useState(false);
 
   useEffect(() => {
     const syncUser = async () => {
@@ -113,9 +109,6 @@ export function UserProvider({ children }: UserProviderProps) {
       // Update cache and timestamps
       setCachedClient(client);
       setLastTokenRequestTime(Date.now());
-      // Set token expiration (setting to 8 minutes - more conservative than before)
-      setTokenExpiresAt(Date.now() + 8 * 60 * 1000);
-      setTokenValidated(true);
 
       console.log(
         "Successfully refreshed Supabase token with expiry in 8 minutes",
