@@ -69,7 +69,7 @@ export function UserProvider({ children }: UserProviderProps) {
         setSupabaseUserId(userId);
         console.log("Synced user with Supabase:", userId);
         setError(null);
-        
+
         // Immediately get a fresh token after user is synced
         await refreshSupabaseToken();
       } catch (err) {
@@ -115,7 +115,9 @@ export function UserProvider({ children }: UserProviderProps) {
       setTokenExpiresAt(Date.now() + 10 * 60 * 1000);
       setTokenValidated(true);
 
-      console.log("Successfully refreshed Supabase token with expiry in 10 minutes");
+      console.log(
+        "Successfully refreshed Supabase token with expiry in 10 minutes",
+      );
       return client;
     } catch (err) {
       console.error("Error refreshing Supabase token:", err);
@@ -139,11 +141,15 @@ export function UserProvider({ children }: UserProviderProps) {
     const tokenExpired = now > tokenExpiresAt;
     const tokenExpiringSoon = now > tokenExpiresAt - 2 * 60 * 1000;
     const recentlyRefreshed = now - lastTokenRequestTime < 30000;
-    
+
     // Only consider validation status for the initial refresh
     const needsInitialValidation = !tokenValidated && !cachedClient;
-    
-    const needsRefresh = !cachedClient || tokenExpired || (tokenExpiringSoon && !recentlyRefreshed) || needsInitialValidation;
+
+    const needsRefresh =
+      !cachedClient ||
+      tokenExpired ||
+      (tokenExpiringSoon && !recentlyRefreshed) ||
+      needsInitialValidation;
 
     if (needsRefresh) {
       console.log("Token expired or expiring soon, refreshing...");
@@ -152,19 +158,26 @@ export function UserProvider({ children }: UserProviderProps) {
 
     // Use cached client if it's still valid
     return cachedClient;
-  }, [user, cachedClient, tokenExpiresAt, refreshSupabaseToken, tokenValidated, lastTokenRequestTime]);
+  }, [
+    user,
+    cachedClient,
+    tokenExpiresAt,
+    refreshSupabaseToken,
+    tokenValidated,
+    lastTokenRequestTime,
+  ]);
 
   // Add an error handler effect that will refresh the token on 401/403 errors
   useEffect(() => {
     if (error) {
-      const errorMessage = error.message?.toLowerCase() || '';
-      const isAuthError = 
-        errorMessage.includes('unauthorized') || 
-        errorMessage.includes('forbidden') ||
-        errorMessage.includes('jwt expired');
-      
+      const errorMessage = error.message?.toLowerCase() || "";
+      const isAuthError =
+        errorMessage.includes("unauthorized") ||
+        errorMessage.includes("forbidden") ||
+        errorMessage.includes("jwt expired");
+
       if (isAuthError && user) {
-        console.log('Auth error detected, refreshing token...');
+        console.log("Auth error detected, refreshing token...");
         refreshSupabaseToken();
       }
     }

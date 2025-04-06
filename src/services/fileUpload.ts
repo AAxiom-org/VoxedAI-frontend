@@ -1,25 +1,24 @@
-import { supabase } from "./supabase";
-import type { NotebookFile } from "../types/notebook";
+import type { SpaceFile } from "../types/space";
 
 /**
- * Uploads a file to Supabase storage and adds a record to the notebook_files table
+ * Uploads a file to Supabase storage and adds a record to the space_files table
  * Then sends the file to the ingest API endpoint for processing
  * @param file The file to upload
- * @param notebookId The ID of the notebook to associate the file with
+ * @param spaceId The ID of the space to associate the file with
  * @param userId The ID of the user uploading the file
- * @param supabaseClient Optional authenticated Supabase client
+ * @param supabaseClient Authenticated Supabase client
  * @param retryCount Number of times to retry on auth errors
  */
 export async function uploadFile(
   file: File,
   isNote: boolean = false,
-  notebookId: string,
+  spaceId: string,
   userId: string,
-  supabaseClient = supabase,
+  supabaseClient: any,
   retryCount: number = 0,
 ): Promise<{
   success: boolean;
-  data?: NotebookFile;
+  data?: SpaceFile;
   error?: any;
   isProcessing?: boolean;
   message?: string;
@@ -30,7 +29,7 @@ export async function uploadFile(
     console.log("Starting file upload with user ID:", userId);
 
     // Format the storage path correctly for our bucket policies
-    const filePath = `${userId}/${notebookId}/${Date.now()}_${file.name}`;
+    const filePath = `${userId}/${spaceId}/${Date.now()}_${file.name}`;
 
     console.log("Uploading to path:", filePath);
 
@@ -44,21 +43,21 @@ export async function uploadFile(
 
     if (uploadError) {
       console.error("Storage upload error:", uploadError);
-      
+
       // Handle JWT expired errors specifically
       if (
-        (uploadError as any).statusCode === '403' && 
-        uploadError.message === 'jwt expired' && 
+        (uploadError as any).statusCode === "403" &&
+        uploadError.message === "jwt expired" &&
         retryCount < 2
       ) {
         console.log(`JWT expired during upload, attempt ${retryCount + 1}/3`);
         return {
           success: false,
           error: "Authentication token expired. Will retry with new token.",
-          shouldRetryWithNewToken: true
+          shouldRetryWithNewToken: true,
         };
       }
-      
+
       // Return specific error for unsupported file type
       if (uploadError.message && uploadError.message.includes("content type")) {
         return {
@@ -81,9 +80,9 @@ export async function uploadFile(
 
     console.log("File uploaded successfully, creating database record");
 
-    // Create a record in the notebook_files table
-    const fileData: Omit<NotebookFile, "id" | "created_at"> = {
-      notebook_id: notebookId,
+    // Create a record in the space_files table
+    const fileData: Omit<SpaceFile, "id" | "created_at"> = {
+      space_id: spaceId,
       user_id: userId, // Keep the original userId for database records
       file_name: file.name,
       file_path: filePath,
@@ -93,24 +92,26 @@ export async function uploadFile(
     };
 
     const { data: fileRecord, error: dbError } = await supabaseClient
-      .from("notebook_files")
+      .from("space_files")
       .insert([fileData])
       .select()
       .single();
 
     if (dbError) {
       console.error("Database insert error:", dbError);
-      
+
       // Handle JWT expired errors for database operations
-      if (dbError.code === 'PGRST301' && retryCount < 2) {
-        console.log(`JWT expired during database insert, attempt ${retryCount + 1}/3`);
+      if (dbError.code === "PGRST301" && retryCount < 2) {
+        console.log(
+          `JWT expired during database insert, attempt ${retryCount + 1}/3`,
+        );
         return {
           success: false,
           error: "Authentication token expired. Will retry with new token.",
-          shouldRetryWithNewToken: true
+          shouldRetryWithNewToken: true,
         };
       }
-      
+
       throw dbError;
     }
 
@@ -126,37 +127,41 @@ export async function uploadFile(
     };
   } catch (error) {
     console.error("Error uploading file:", error);
-    
+
     // Check for authentication-related errors
     const errorStr = String(error);
-    if ((errorStr.includes('401') || errorStr.includes('403') || 
-         errorStr.includes('jwt') || errorStr.includes('unauthorized')) && 
-        retryCount < 2) {
+    if (
+      (errorStr.includes("401") ||
+        errorStr.includes("403") ||
+        errorStr.includes("jwt") ||
+        errorStr.includes("unauthorized")) &&
+      retryCount < 2
+    ) {
       return {
         success: false,
         error: "Authentication error. Will retry with new token.",
-        shouldRetryWithNewToken: true
+        shouldRetryWithNewToken: true,
       };
     }
-    
+
     return { success: false, error };
   }
 }
 
 /**
- * Fetches all files for a notebook
- * @param notebookId The ID of the notebook to fetch files for
- * @param supabaseClient Optional authenticated Supabase client
+ * Fetches all files for a space
+ * @param spaceId The ID of the space to fetch files for
+ * @param supabaseClient Authenticated Supabase client
  */
-export async function getNotebookFiles(
-  notebookId: string,
-  supabaseClient = supabase,
-): Promise<{ success: boolean; data?: NotebookFile[]; error?: any }> {
+export async function getSpaceFiles(
+  spaceId: string,
+  supabaseClient: any,
+): Promise<{ success: boolean; data?: SpaceFile[]; error?: any }> {
   try {
     const { data, error } = await supabaseClient
-      .from("notebook_files")
+      .from("space_files")
       .select("*")
-      .eq("notebook_id", notebookId)
+      .eq("space_id", spaceId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -165,7 +170,7 @@ export async function getNotebookFiles(
 
     return { success: true, data };
   } catch (error) {
-    console.error("Error fetching notebook files:", error);
+    console.error("Error fetching space files:", error);
     return { success: false, error };
   }
 }
@@ -178,10 +183,17 @@ export async function getNotebookFiles(
 export async function deleteFile(
   fileId: string,
   retryCount: number = 0,
-): Promise<{ success: boolean; error?: any; shouldRetryWithNewToken?: boolean; message?: string }> {
+): Promise<{
+  success: boolean;
+  error?: any;
+  shouldRetryWithNewToken?: boolean;
+  message?: string;
+}> {
   try {
-    console.log(`[DEBUG] Deleting file ${fileId} using consolidated API endpoint`);
-    
+    console.log(
+      `[DEBUG] Deleting file ${fileId} using consolidated API endpoint`,
+    );
+
     const response = await fetch(
       `https://voxed.aidanandrews.org/api/v1/files/${fileId}`,
       {
@@ -194,46 +206,58 @@ export async function deleteFile(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error(`[DEBUG] API deletion failed with status ${response.status}:`, errorData);
-      
+      console.error(
+        `[DEBUG] API deletion failed with status ${response.status}:`,
+        errorData,
+      );
+
       // Handle authentication errors
-      if ((response.status === 401 || response.status === 403) && retryCount < 2) {
+      if (
+        (response.status === 401 || response.status === 403) &&
+        retryCount < 2
+      ) {
         return {
           success: false,
           error: "Authentication error. Will retry with new token.",
-          shouldRetryWithNewToken: true
+          shouldRetryWithNewToken: true,
         };
       }
-      
-      return { 
-        success: false, 
-        error: errorData.message || `API returned error status: ${response.status}`,
-        message: errorData.message || `API returned error status: ${response.status}`
+
+      return {
+        success: false,
+        error:
+          errorData.message || `API returned error status: ${response.status}`,
+        message:
+          errorData.message || `API returned error status: ${response.status}`,
       };
     }
 
     const result = await response.json();
     console.log("[DEBUG] File deletion API response:", result);
-    
-    return { 
+
+    return {
       success: true,
-      message: result.message
+      message: result.message,
     };
   } catch (error) {
     console.error("[DEBUG] Error in deleteFile:", error);
-    
+
     // Check for authentication-related errors
     const errorStr = String(error);
-    if ((errorStr.includes('401') || errorStr.includes('403') || 
-         errorStr.includes('jwt') || errorStr.includes('unauthorized')) && 
-        retryCount < 2) {
+    if (
+      (errorStr.includes("401") ||
+        errorStr.includes("403") ||
+        errorStr.includes("jwt") ||
+        errorStr.includes("unauthorized")) &&
+      retryCount < 2
+    ) {
       return {
         success: false,
         error: "Authentication error. Will retry with new token.",
-        shouldRetryWithNewToken: true
+        shouldRetryWithNewToken: true,
       };
     }
-    
+
     return { success: false, error };
   }
 }
@@ -300,7 +324,7 @@ export async function processFile(
 /**
  * Uploads and processes a file with retry logic and state management
  * @param file The file to upload
- * @param notebookId The ID of the notebook
+ * @param spaceId The ID of the space
  * @param userId The ID of the user
  * @param refreshTokenFn Function to refresh auth token
  * @param getClientFn Function to get Supabase client
@@ -309,48 +333,52 @@ export async function processFile(
  */
 export async function uploadAndProcessFile(
   file: File,
-  notebookId: string,
+  spaceId: string,
   userId: string,
   refreshTokenFn: () => Promise<void>,
   getClientFn: () => Promise<any>,
   isNote: boolean = false,
 ): Promise<{
-  success: boolean,
-  data?: NotebookFile,
-  error?: any,
-  tempId: string,
-  isProcessing?: boolean,
-  message?: string,
+  success: boolean;
+  data?: SpaceFile;
+  error?: any;
+  tempId: string;
+  isProcessing?: boolean;
+  message?: string;
 }> {
   // Create a temporary ID to track the uploading state
   const tempId = `temp-${Date.now()}`;
-  
+
   // Function to handle file upload with retry logic
   const uploadWithRetry = async (retryCount = 0): Promise<any> => {
     try {
       // Get authenticated Supabase client - force refresh if retry
-      const authClient = await (retryCount > 0 
-        ? refreshTokenFn().then(() => getClientFn()) 
+      const authClient = await (retryCount > 0
+        ? refreshTokenFn().then(() => getClientFn())
         : getClientFn());
 
       if (!authClient) {
         console.error("Failed to get authenticated Supabase client");
-        throw new Error("Authentication error. Please try again or refresh the page.");
+        throw new Error(
+          "Authentication error. Please try again or refresh the page.",
+        );
       }
 
       // Upload to Supabase
       const result = await uploadFile(
         file,
         isNote,
-        notebookId,
+        spaceId,
         userId,
         authClient,
-        retryCount
+        retryCount,
       );
 
       // If token expired and we should retry with a new token
       if (!result.success && result.shouldRetryWithNewToken && retryCount < 2) {
-        console.log(`Retrying upload with refreshed token, attempt ${retryCount + 1}/3`);
+        console.log(
+          `Retrying upload with refreshed token, attempt ${retryCount + 1}/3`,
+        );
         // Force refresh the token and retry
         await refreshTokenFn();
         return uploadWithRetry(retryCount + 1);
@@ -359,19 +387,21 @@ export async function uploadAndProcessFile(
       return result;
     } catch (err) {
       console.error(`Error uploading file (attempt ${retryCount + 1}/3):`, err);
-      
+
       // If we haven't retried too many times and this looks like an auth error, retry
       const errorMsg = String(err).toLowerCase();
-      if (retryCount < 2 && 
-          (errorMsg.includes('jwt') || 
-           errorMsg.includes('unauthorized') || 
-           errorMsg.includes('403') || 
-           errorMsg.includes('401'))) {
+      if (
+        retryCount < 2 &&
+        (errorMsg.includes("jwt") ||
+          errorMsg.includes("unauthorized") ||
+          errorMsg.includes("403") ||
+          errorMsg.includes("401"))
+      ) {
         console.log("Auth error detected, refreshing token and retrying...");
         await refreshTokenFn();
         return uploadWithRetry(retryCount + 1);
       }
-      
+
       throw err;
     }
   };
@@ -385,14 +415,14 @@ export async function uploadAndProcessFile(
         success: false,
         error: result.error || "Failed to upload file",
         tempId,
-        message: result.fileType 
+        message: result.fileType
           ? `Unsupported file type: ${result.fileType}. Please try a different file.`
-          : result.error || "Failed to upload file"
+          : result.error || "Failed to upload file",
       };
     }
 
     // Add the file to the files list with processing status
-    const newFile: NotebookFile & { isProcessing?: boolean } = {
+    const newFile: SpaceFile & { isProcessing?: boolean } = {
       ...result.data,
       isProcessing: result.isProcessing || false,
     };
@@ -403,7 +433,7 @@ export async function uploadAndProcessFile(
       data: newFile,
       tempId,
       isProcessing: true,
-      message: result.message || "File uploaded, AI is now processing..."
+      message: result.message || "File uploaded, AI is now processing...",
     };
   } catch (err) {
     console.error("Error uploading file:", err);
@@ -411,7 +441,7 @@ export async function uploadAndProcessFile(
       success: false,
       error: "An error occurred while uploading the file",
       tempId,
-      message: "Error uploading file"
+      message: "Error uploading file",
     };
   }
 }
@@ -427,9 +457,9 @@ export async function deleteFileWithRetry(
   fileId: string,
   refreshTokenFn: () => Promise<void>,
   getClientFn: () => Promise<any>,
-): Promise<{ success: boolean, error?: any }> {
-  // Function to handle file deletion with retry logic
+): Promise<{ success: boolean; error?: any }> {
   getClientFn;
+  // Function to handle file deletion with retry logic
   const deleteWithRetryInternal = async (retryCount = 0): Promise<any> => {
     try {
       // If retrying, refresh the token first
@@ -443,7 +473,9 @@ export async function deleteFileWithRetry(
 
       // If token expired and we should retry with a new token
       if (!result.success && result.shouldRetryWithNewToken && retryCount < 2) {
-        console.log(`Retrying deletion with refreshed token, attempt ${retryCount + 1}/3`);
+        console.log(
+          `Retrying deletion with refreshed token, attempt ${retryCount + 1}/3`,
+        );
         // Force refresh the token and retry
         await refreshTokenFn();
         return deleteWithRetryInternal(retryCount + 1);
@@ -452,19 +484,21 @@ export async function deleteFileWithRetry(
       return result;
     } catch (err) {
       console.error(`Error deleting file (attempt ${retryCount + 1}/3):`, err);
-      
+
       // If we haven't retried too many times and this looks like an auth error, retry
       const errorMsg = String(err).toLowerCase();
-      if (retryCount < 2 && 
-          (errorMsg.includes('jwt') || 
-           errorMsg.includes('unauthorized') || 
-           errorMsg.includes('403') || 
-           errorMsg.includes('401'))) {
+      if (
+        retryCount < 2 &&
+        (errorMsg.includes("jwt") ||
+          errorMsg.includes("unauthorized") ||
+          errorMsg.includes("403") ||
+          errorMsg.includes("401"))
+      ) {
         console.log("Auth error detected, refreshing token and retrying...");
         await refreshTokenFn();
         return deleteWithRetryInternal(retryCount + 1);
       }
-      
+
       throw err;
     }
   };
@@ -474,9 +508,9 @@ export async function deleteFileWithRetry(
     return await deleteWithRetryInternal();
   } catch (err) {
     console.error("Error in deleteFileWithRetry:", err);
-    return { 
-      success: false, 
-      error: err instanceof Error ? err.message : "Unknown error deleting file" 
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error deleting file",
     };
   }
 }

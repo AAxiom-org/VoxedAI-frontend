@@ -1,48 +1,38 @@
-import { lazy, Suspense } from 'react';
-import {
-  SignedIn,
-  SignedOut,
-} from "@clerk/clerk-react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-} from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 // Marketing Pages
 import SignInUp from "./pages/auth/SignIn-Up";
-import Header from "./components/Header";
+import Header from "./components/common/Header";
 
 // Contexts / Light Weight Files
 import { UserProvider } from "./contexts/UserContext";
 import { useTheme } from "./contexts/ThemeContext";
-import TokenRefresher from "./components/TokenRefresher";
-import LoadingSpinner from "./components/LoadingSpinner";
-import DevelopmentBanner from "./components/DevelopmentBanner";
+import TokenRefresher from "./components/common/TokenRefresher";
+import LoadingSpinner from "./components/common/LoadingSpinner";
 
-// Web App
-const NotebooksPage = lazy(() => import("./pages/notebooks/Notebooks"));
-const NotebookDetailPage = lazy(() => import("./pages/notebooks/NotebookDetail"));
-const Sandbox = lazy(() => import("./components/Sandbox"));
-
+// Web App - Lazy loaded components
+const Sandbox = lazy(() => import("./components/code/Sandbox"));
+const SpaceUI = lazy(() => import("./pages/Space"));
+const WorkspacesUI = lazy(() => import("./pages/Workspaces"));
 
 export default function App() {
   // Get current theme from our context
   const { theme } = useTheme();
-  
+
   // Determine toast styling based on theme
   const isDark = theme === "dark";
-  
+
   return (
     <UserProvider>
       <SignedIn>
         <TokenRefresher />
       </SignedIn>
-      
+
       <Router>
-        <Header />
         <Toaster
           position="top-center"
           toastOptions={{
@@ -78,7 +68,7 @@ export default function App() {
             path="*"
             element={
               <>
-                <Navigate to="/notebooks" />
+                <Navigate to="/spaces" />
               </>
             }
           />
@@ -91,7 +81,7 @@ export default function App() {
                   <SignInUp />
                 </SignedOut>
                 <SignedIn>
-                  <Navigate to="/notebooks" />
+                  <Navigate to="/spaces" />
                 </SignedIn>
               </>
             }
@@ -105,52 +95,60 @@ export default function App() {
                   <SignInUp />
                 </SignedOut>
                 <SignedIn>
-                  <Navigate to="/notebooks" />
+                  <Navigate to="/spaces" />
                 </SignedIn>
               </>
             }
           />
 
           {/* Web App - Wrap lazy-loaded components with Suspense */}
-          <Route path="/notebooks" element={
-            <>
-              <SignedIn>
-                <Suspense fallback={<LoadingSpinner size="large" />}>
-                  <DevelopmentBanner />
-                  <NotebooksPage />
-                </Suspense>
-              </SignedIn>
-              <SignedOut>
-                <Navigate to="/sign-in" />
-              </SignedOut>
-            </>
-          } />
-          <Route path="/notebooks/:id" element={
-            <>
-              <SignedIn>
-                <Suspense fallback={<LoadingSpinner size="large" />}>
-                  <NotebookDetailPage />
-                </Suspense>
-              </SignedIn>
-              <SignedOut>
-                <Navigate to="/sign-in" />
-              </SignedOut>
-            </>
-          } />
-          <Route path="/sandbox" element={
-            <>
-              <SignedIn>
-                <Suspense fallback={<LoadingSpinner size="large" />}>
-                  <Sandbox />
-                </Suspense>
-              </SignedIn>
-              <SignedOut>
-                <Navigate to="/sign-in" />
-              </SignedOut>
-            </>
-          } />
+          <Route
+            path="/spaces"
+            element={
+              <>
+                <SignedIn>
+                  <Header />
+                  <Suspense fallback={<LoadingSpinner size="large" />}>
+                    <WorkspacesUI />
+                  </Suspense>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" />
+                </SignedOut>
+              </>
+            }
+          />
+          <Route
+            path="/spaces/:id"
+            element={
+              <>
+                <SignedIn>
+                  <Suspense fallback={<LoadingSpinner size="large" />}>
+                    <SpaceUI />
+                  </Suspense>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" />
+                </SignedOut>
+              </>
+            }
+          />
+          <Route
+            path="/sandbox"
+            element={
+              <>
+                <SignedIn>
+                  <Suspense fallback={<LoadingSpinner size="large" />}>
+                    <Sandbox />
+                  </Suspense>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" />
+                </SignedOut>
+              </>
+            }
+          />
           {/* End Web App */}
-          
         </Routes>
       </Router>
     </UserProvider>

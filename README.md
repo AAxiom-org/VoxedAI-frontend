@@ -4,8 +4,8 @@
 
 ## Features
 
-- **Notebook Management**: Create and manage notebooks for organizing your files and conversations
-- **File Upload**: Upload various file types to your notebooks
+- **Space Management**: Create and manage spaces for organizing your files and conversations
+- **File Upload**: Upload various file types to your spaces
 - **AI Chat**: Interact with your files using Gemini AI with streaming responses
 - **Authentication**: Secure authentication with Clerk
 

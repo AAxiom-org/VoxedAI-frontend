@@ -1,12 +1,9 @@
-// Model configuration - this is now used as model_name for the API
-const MODEL_NAME = "gemini-1.5-flash-8b";
-
 // API endpoint
-const API_URL = "https://voxed.aidanandrews.org/api/v1/query";
+const API_URL = "https://voxed.aidanandrews.org/api/v1/agent/run";
 
 // Import types from types directory
 import { type Message, type MessageRole } from "../types/gemini";
-import { getToggledFiles } from "./userService";
+import { DEFAULT_MODEL, type Model } from "../types/models";
 
 /**
  * Streams a chat response from the Gemini model
@@ -16,17 +13,37 @@ import { getToggledFiles } from "./userService";
  * @param isCodingQuestion Whether this is a coding-related question
  * @param isNoteQuestion Whether this is a note-related question
  * @param noteToggledFiles Optional array of note file IDs to use when isNoteQuestion is true
+ * @param noteContent Optional note content to include when a note is open
+ * @param modelName Optional model name to use (defaults to NORMAL model)
+ * @param spaceId Optional space ID for the current workspace
+ * @param activeFileId Optional ID of the currently active file (e.g., open note)
+ * @param chatSessionId Optional ID of the current chat session
  */
-export async function streamChatWithGemini(
-  history: Message[],
-  onStreamUpdate: (content: string) => void,
-  userId: string | null,
-  isCodingQuestion: boolean = false,
-  isNoteQuestion: boolean = false,
-  noteToggledFiles?: string[],
-): Promise<void> {
+interface StreamChatOptions {
+  history: Message[];
+  onStreamUpdate: (content: string) => void;
+  userId: string | null;
+  modelName?: Model;
+  spaceId?: string;
+  activeFileId?: string | null;
+  chatSessionId?: string | null;
+}
+
+export type { StreamChatOptions };
+
+export async function streamChatWithGemini({
+  history,
+  onStreamUpdate,
+  userId,
+  modelName = DEFAULT_MODEL,
+  spaceId,
+  activeFileId,
+  chatSessionId,
+}: StreamChatOptions): Promise<void> {
   try {
     console.log("Starting chat with history length:", history.length);
+    console.log("Using model:", modelName);
+    console.log("Using chat session ID:", chatSessionId || "none");
 
     // Validate history array
     if (!history || history.length === 0) {
@@ -53,42 +70,20 @@ export async function streamChatWithGemini(
     // Extract the exact user query text
     const exactUserQuery = lastMessage.content;
     console.log("Exact user query:", exactUserQuery);
-    let toggledFilesIds: string[] | null = null;
-    let queryRequest: any = null;
 
-    // If isNoteQuestion is true and noteToggledFiles is provided, use those files
-    // Otherwise, get the toggled files from the user service
-    if (isNoteQuestion && noteToggledFiles && noteToggledFiles.length > 0) {
-      toggledFilesIds = noteToggledFiles;
-      console.log("Using note toggled files:", toggledFilesIds);
-    } else if (userId) {
-      toggledFilesIds = await getToggledFiles(userId);
-      console.log("Toggled files IDs:", toggledFilesIds);
-    }
+    // Prepare the base query request
+    let queryRequest = {
+      query: exactUserQuery,
+      top_k: 5,
+      model_name: modelName, // Use the provided model name
+      stream: true,
+      user_id: userId,
+      space_id: spaceId,
+      active_file_id: activeFileId || null,
+      chat_session_id: chatSessionId || null, // Include chat session ID
+      save_to_db: true, // Tell backend to save messages to DB
+    };
 
-    if (toggledFilesIds) {
-      // Prepare the query request with the exact user query
-      queryRequest = {
-        query: exactUserQuery,
-        top_k: 5,
-        model_name: MODEL_NAME,
-        use_rag: true,
-        stream: true,
-        user_id: userId,
-        is_coding_question: isCodingQuestion,
-        filter: { "file_id": { "$in": toggledFilesIds } },
-      };
-    } else {
-      queryRequest = {
-        query: exactUserQuery,
-        top_k: 5,
-        model_name: MODEL_NAME,
-        use_rag: true,
-        stream: true,
-        user_id: userId,
-        is_coding_question: isCodingQuestion,
-      };
-    }
     console.log("Sending query request:", queryRequest);
 
     // Make the API request with fetch to support streaming
@@ -112,8 +107,8 @@ export async function streamChatWithGemini(
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let actualResponse = "";
     let streamedContent = "";
+    let actualResponse = "";
 
     try {
       while (true) {
@@ -123,6 +118,9 @@ export async function streamChatWithGemini(
         // Decode the chunk
         const chunk = decoder.decode(value, { stream: true });
         streamedContent += chunk;
+
+        // Debug raw chunk
+        console.log("Raw chunk received:", chunk);
 
         // Parse SSE format to extract actual response content
         const updatedContent = parseStreamingResponse(streamedContent);
@@ -142,6 +140,7 @@ export async function streamChatWithGemini(
       }
 
       console.log("Stream completed successfully");
+      console.log("Final content:", actualResponse);
     } catch (streamError) {
       console.error("Error during stream processing:", streamError);
       // If we have a partial response, still return it
@@ -164,6 +163,8 @@ export async function streamChatWithGemini(
  */
 function parseStreamingResponse(streamData: string): string {
   let extractedText = "";
+  let reasoningText = "";
+  let agentEvents: any[] = [];
 
   try {
     // Split the stream data into lines
@@ -180,35 +181,60 @@ function parseStreamingResponse(streamData: string): string {
           const jsonStr = line.substring(5).trim();
           const data = JSON.parse(jsonStr);
 
-          // If it's a token, add it to the extracted text
-          if (data.type === "token" && data.data) {
-            extractedText += data.data;
+          // Log all parsed data for debugging
+          console.log("Parsed SSE data:", data);
+
+          // If it's a regular token, add it to the extracted text
+          if (data.type === "token" && data.content) {
+            extractedText += data.content;
           }
-        } catch {
-          // If JSON parsing fails, just ignore this line
-          console.warn("Failed to parse JSON in stream data line:", line);
+
+          // If it's a reasoning token, add it to the reasoning text
+          else if (data.type === "reasoning" && data.content) {
+            reasoningText += data.content;
+
+            // Store reasoning text as a data attribute that can be accessed by the ChatView component
+            // This will be preserved in the final output
+            if (reasoningText.trim()) {
+              // Update extracted text to include the reasoning as a data attribute
+              let textWithoutReasoning = extractedText.replace(
+                /<!--reasoning:.*?-->/s,
+                "",
+              );
+              extractedText =
+                textWithoutReasoning +
+                "<!--reasoning:" +
+                reasoningText.trim() +
+                "-->";
+            }
+          }
+
+          // Handle agent events
+          else if (data.type === "agent_event") {
+            console.log("Agent Event from SSE:", data);
+            // Store the agent event for returning to the UI
+            agentEvents.push(data);
+
+            // Update extracted text to include the agent events as a data attribute
+            // This will be preserved in the final output
+            let textWithoutEvents = extractedText.replace(
+              /<!--agent_events:.*?-->/s,
+              "",
+            );
+            extractedText =
+              textWithoutEvents +
+              "<!--agent_events:" +
+              JSON.stringify(agentEvents) +
+              "-->";
+          }
+        } catch (error) {
+          // If JSON parsing fails, log the error and line for debugging
+          console.warn(
+            "Failed to parse JSON in stream data line:",
+            line,
+            error,
+          );
         }
-      }
-    }
-
-    // Trim the text first
-    extractedText = extractedText.trim();
-
-    // List of prefixes to check and remove
-    const prefixesToRemove = [
-      "Answer:",
-      "Answer :",
-      "AI:",
-      "AI :",
-      "Assistant:",
-      "Assistant :",
-    ];
-
-    // Check for each prefix and remove if found
-    for (const prefix of prefixesToRemove) {
-      if (extractedText.startsWith(prefix)) {
-        extractedText = extractedText.substring(prefix.length).trim();
-        break; // Exit after removing the first matching prefix
       }
     }
 

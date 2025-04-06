@@ -76,7 +76,10 @@ let toggledFilesCache: { [userId: string]: string[] } = {};
  * @param userId The user's ID
  * @param toggledFiles Array of file IDs that are toggled/checked
  */
-export function updateToggledFilesCache(userId: string, toggledFiles: string[]) {
+export function updateToggledFilesCache(
+  userId: string,
+  toggledFiles: string[],
+) {
   toggledFilesCache[userId] = toggledFiles;
 }
 
@@ -98,19 +101,19 @@ export function getToggledFilesFromCache(userId: string): string[] {
  */
 export async function getCurrentToggledFiles(
   userId: string,
-  token?: string
+  token?: string,
 ): Promise<string[]> {
   // First check the cache
   const cachedFiles = toggledFilesCache[userId];
   if (cachedFiles) {
     return cachedFiles;
   }
-  
+
   // If not in cache, fetch from server
   const serverFiles = await getToggledFiles(userId, token);
-  
+
   // Update cache with server data
   updateToggledFilesCache(userId, serverFiles);
-  
+
   return serverFiles;
 }

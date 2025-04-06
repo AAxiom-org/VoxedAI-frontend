@@ -73,6 +73,7 @@
 @layer base {
   :root {
     color-scheme: light dark;
+    --sidebar-width: 239px;
   }
 
   html.color-scheme-adaptive {
@@ -154,11 +155,7 @@
   }
 
   ::selection {
-    background-color: color-mix(
-      in oklch,
-      var(--color-primary) 25%,
-      transparent
-    );
+    background-color: rgba(200, 200, 200, 0.3); /* Gray selection highlight */
   }
 
   /* Improve image visibility in dark mode */
@@ -633,3 +630,30 @@
 
 /* Import notes styling for BlockNote editor */
 @import "./styles/sandbox.css";
+
+/* Permanent Styles */
+button {
+  cursor: pointer;
+}
+
+/* Make all block containers take full width */
+.bn-block-group,
+.bn-block-outer,
+.bn-block,
+.bn-block-content,
+.bn-inline-content {
+  width: 100%;
+  display: block;
+}
+
+/* Ensure checklist items display properly */
+.bn-block-content[data-content-type="checkListItem"] > div {
+  display: flex;
+  width: 100%;
+}
+
+/* Make sure headings extend full width */
+.bn-block-content[data-content-type="heading"] h1,
+.bn-block-content[data-content-type="heading"] h3 {
+  width: 100%;
+}

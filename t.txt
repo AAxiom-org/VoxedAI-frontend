@@ -1,1 +1,118 @@
-Okay, this app is designed to be an llm-focused data interaction and note taking app. It is meant to either upload or record lectures and have them stored in the users personal db (just do local storage for now). Then the user needs to be able to interact with their recordings and notes in the main chat area. The main point of this app is that users can create notebooks that contain both personal notes, lecture notes (if uploaded), and lecture recordings. Then they are able to chat with all of this data seamlessly through the chatbot. The data in the db needs to be used as context for the llm calls. For now, just use open-ai api and store all data in local storage or in variables. The main entry point should allow users to see their notebooks and create new ones. Then they should be either prompted to upload data for a new notebook or see their existing notebook with chat/note-taking in the middle, with a sidebar that shows the currently attached "knowledge". When new notes are created add them to the knowledge. And have a seperate tab to manage lecture recordings. Most of the functionality doesnt actually have to work yet just get the ui and structure down
+{/* Links Section */}
+        <div className="my-2">
+          <div 
+            className="flex items-center justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+            onClick={() => setLinksExpanded(!linksExpanded)}
+          >
+            <div className="flex items-center">
+              <Link size={16} className="text-gray-500 mr-2" />
+              <span className="text-sm text-adaptive">Links</span>
+            </div>
+            {linksExpanded ? 
+              <ChevronDown size={16} className="text-gray-500" /> : 
+              <ChevronRight size={16} className="text-gray-500" />
+            }
+          </div>
+          
+          {/* Links List - only visible when expanded */}
+          {linksExpanded && (
+            <div className="ml-4 bg-gray-50 dark:bg-gray-800 p-2 rounded-md mx-2">
+              {/* Link upload input */}
+              <input
+                type="text"
+                ref={linkInputRef}
+                onChange={handleLinkUpload}
+                className="hidden"
+                id="link-upload"
+                disabled={uploadingLinks.size > 0}
+              />
+              
+              {/* Loading state */}
+              {isLoadingLinks ? (
+                <div className="flex justify-center py-4">
+                  <Loader size={16} className="animate-spin text-gray-500" />
+                </div>
+              ) : links.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-2">
+                  No links uploaded yet
+                </p>
+              ) : (
+                // Links list
+                links.map((link) => (
+                  <div 
+                    key={link.id} 
+                    className="flex items-center justify-between py-1 px-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                  >
+                    <div className="flex items-center overflow-hidden">
+                      {link.metadata?.emoji ? (
+                        <span className="mr-2 flex-shrink-0">{link.metadata.emoji}</span>
+                      ) : (
+                        getLinkTypeIcon(link.file_type)
+                      )}
+                      <span className="truncate text-adaptive">{getDisplayName(link)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      {link.isDeletingLink ? (
+                        <Loader size={14} className="animate-spin text-gray-500 mr-2" />
+                      ) : (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteLink(link.id);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mr-2"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M3 6h18"></path>
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      )}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLinkVisibility(link.id);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      >
+                        {link.visible ? 
+                          <Eye size={14} /> : 
+                          <EyeOff size={14} />
+                        }
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+              
+              {/* Add new link button */}
+              <label
+                htmlFor="link-upload"
+                className="flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mt-2 w-full cursor-pointer"
+              >
+                {uploadingLinks.size > 0 ? (
+                  <>
+                    <Loader size={14} className="animate-spin mr-1" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={14} className="mr-1" />
+                    Add link
+                  </>
+                )}
+              </label>
+            </div>
+          )}
+        </div>

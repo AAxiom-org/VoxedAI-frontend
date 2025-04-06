@@ -1,5 +1,5 @@
 // Code examples for the Sandbox component
-// Contains sample files for different programming languages 
+// Contains sample files for different programming languages
 
 const languageFiles = {
   javascript: {
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         print(f"Fibonacci({i}) = {fibonacci(i)}")
 `,
       active: true,
-    }
+    },
   },
   java: {
     "/Fibonacci.java": {
@@ -121,7 +121,7 @@ public class Fibonacci {
     }
 }`,
       active: true,
-    }
+    },
   },
   cpp: {
     "/fibonacci.cpp": {
@@ -166,7 +166,7 @@ long long fibonacci(int n);
 
 #endif // FIBONACCI_H`,
       active: false,
-    }
+    },
   },
   rust: {
     "/main.rs": {
@@ -204,7 +204,7 @@ fn fibonacci(n: u64) -> u64 {
     b
 }`,
       active: true,
-    }
+    },
   },
   php: {
     "/index.php": {
@@ -241,7 +241,7 @@ for ($i = 0; $i < 10; $i++) {
 echo "</ul>";
 ?>`,
       active: true,
-    }
+    },
   },
   sql: {
     "/fibonacci.sql": {
@@ -296,7 +296,7 @@ WHERE position > 1;
 -- Display results
 SELECT * FROM fibonacci_numbers ORDER BY position;`,
       active: true,
-    }
+    },
   },
   html: {
     "/index.html": {
@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });`,
       active: false,
-    }
+    },
   },
   css: {
     "/index.html": {
@@ -725,7 +725,7 @@ h3 {
     }
 }`,
       active: true,
-    }
+    },
   },
   markdown: {
     "/fibonacci.md": {
@@ -827,7 +827,7 @@ As you can see, the ratio converges to the Golden Ratio (φ ≈ 1.618) as n incr
 
 *This markdown document demonstrates formatting features while explaining the Fibonacci sequence.*`,
       active: true,
-    }
+    },
   },
   json: {
     "/fibonacci.json": {
@@ -914,7 +914,7 @@ As you can see, the ratio converges to the Golden Ratio (φ ≈ 1.618) as n incr
   }
 }`,
       active: true,
-    }
+    },
   },
   xml: {
     "/fibonacci.xml": {
@@ -1029,9 +1029,9 @@ def fibonacci(n):
     <application>Nature (Plant Growth Patterns)</application>
     <application>Art and Architecture</application>
   </applications>
-</fibonacci>`
-    }
-  }
+</fibonacci>`,
+    },
+  },
 };
 
 export default languageFiles;
@@ -1049,5 +1049,5 @@ export const languageOptions = [
   { value: "css", label: "CSS" },
   { value: "markdown", label: "Markdown" },
   { value: "json", label: "JSON" },
-  { value: "xml", label: "XML" }
-]; 
+  { value: "xml", label: "XML" },
+];
