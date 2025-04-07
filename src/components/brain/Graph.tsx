@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import MarkdownRenderer from "../common/MarkdownRenderer";
 import { useSupabaseUser } from "../../contexts/UserContext";
+import { useLayoutState } from "../../hooks/useLayoutState";
+import { XCircle } from "lucide-react";
 
 // Define TypeScript interfaces
 interface GraphNode {
@@ -14,7 +16,7 @@ interface GraphNode {
   __bckgDimensions?: number[];
   x?: number;
   y?: number;
-  noteId?: string;
+  noteId?: string; // This is the string ID that matches metadata.id in space_research
 }
 
 interface GraphLink {
@@ -41,6 +43,31 @@ interface HierarchicalGraphProps {
   spaceId?: string | undefined;
 }
 
+interface NoteMetadata {
+  id?: string;
+  title?: string;
+  description?: string;
+  emoji?: string;
+  tags?: string[];
+  created?: string;
+  [key: string]: any;
+}
+
+interface ResearchEntry {
+  id: string; // UUID primary key
+  content: string;
+  metadata: NoteMetadata;
+  related_note_ids?: string[]; // Array of UUIDs to actual notes in space_files or filenames
+}
+
+interface SpaceFile {
+  id: string;
+  file_name: string;
+  file_path: string;
+  metadata?: NoteMetadata;
+  is_note: boolean;
+}
+
 const HierarchicalGraph = ({
   currentView,
   setCurrentView,
@@ -49,6 +76,8 @@ const HierarchicalGraph = ({
 }: HierarchicalGraphProps) => {
   // Get Supabase client from UserContext
   const { getSupabaseClient } = useSupabaseUser();
+  // Use layout state to manage note selection
+  const [layout, setLayout] = useLayoutState();
 
   // State to track whether we're in the main view or a node's detailed view
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -63,17 +92,22 @@ const HierarchicalGraph = ({
     width: 0,
     height: 0,
   });
-  // Track if this is a full screen view or a child component
-  const isFullScreen = currentView === "graph";
 
   // New states for Supabase data
-  const [markdownDataMap, setMarkdownDataMap] = useState<
-    Record<string, string>
-  >({});
+  const [researchEntries, setResearchEntries] = useState<ResearchEntry[]>([]);
+  const [relatedNoteIds, setRelatedNoteIds] = useState<string[]>([]);
+  const [noteTitlesMap, setNoteTitlesMap] = useState<Record<string, string>>({});
+  const [noteIdMap, setNoteIdMap] = useState<Record<string, string>>({});
   const [mainGraphData, setMainGraphData] = useState<GraphData | null>(null);
   const [detailedGraphs, setDetailedGraphs] = useState<DetailedGraphs>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // Helper function to check if a string is a valid UUID
+  const isUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
 
   // Track container size with a resize observer
   useEffect(() => {
@@ -99,7 +133,7 @@ const HierarchicalGraph = ({
     };
   }, []);
 
-  // Fetch graph data from Supabase
+  // Fetch graph data and research entries from Supabase
   const fetchGraphData = async () => {
     if (!spaceId) return;
 
@@ -120,6 +154,7 @@ const HierarchicalGraph = ({
 
       if (graphsError) {
         throw new Error(`Error fetching graph data: ${graphsError.message}`);
+        console.log(layout);
       }
 
       if (graphsData && graphsData.data) {
@@ -130,25 +165,108 @@ const HierarchicalGraph = ({
         setDetailedGraphs(detailedGraphsData as DetailedGraphs);
       }
 
-      // Fetch all markdown content from space_research table
-      const { data: contentData, error: contentError } = await supabaseClient
+      // Fetch all research entries from space_research table
+      const { data: researchData, error: researchError } = await supabaseClient
         .from("space_research")
-        .select("content, metadata")
+        .select("id, content, metadata, related_note_ids")
         .eq("space_id", spaceId);
 
-      if (contentError) {
-        throw new Error(`Error fetching content data: ${contentError.message}`);
+      if (researchError) {
+        throw new Error(`Error fetching research data: ${researchError.message}`);
       }
 
-      // Create mapping from note ID to content
-      if (contentData) {
-        const contentMap: Record<string, string> = {};
-        contentData.forEach((item: { metadata: any; content: string }) => {
-          if (item.metadata && item.metadata.id && item.content) {
-            contentMap[item.metadata.id] = item.content;
+      if (researchData) {
+        // Store all research entries
+        setResearchEntries(researchData as ResearchEntry[]);
+        
+        // Create mapping from note ID in metadata to content and related note IDs
+        const entriesById = new Map<string, ResearchEntry>();
+        
+        researchData.forEach((entry: ResearchEntry) => {
+          // Store by metadata.id for easy lookup by graph node noteId
+          if (entry.metadata && entry.metadata.id) {
+            entriesById.set(entry.metadata.id, entry);
           }
         });
-        setMarkdownDataMap(contentMap);
+        
+        // If we have a selected node, find its related notes
+        if (selectedNodeId && selectedNode) {
+          const nodeId = selectedNode.noteId;
+          if (nodeId) {
+            const entry = entriesById.get(nodeId);
+            if (entry && entry.related_note_ids) {
+              setRelatedNoteIds(entry.related_note_ids);
+            } else {
+              setRelatedNoteIds([]);
+            }
+          }
+        }
+        
+        // Fetch all files first to create necessary mappings
+        const { data: allFiles, error: filesError } = await supabaseClient
+          .from("space_files")
+          .select("id, file_name, file_path, metadata, is_note")
+          .eq("space_id", spaceId)
+          .eq("is_note", true);
+          
+        if (filesError) {
+          console.error("Error fetching note files:", filesError);
+        } else if (allFiles) {
+          // Create mappings for note titles and file_name to id
+          const noteTitles: Record<string, string> = {};
+          const idMap: Record<string, string> = {};
+          
+          allFiles.forEach((file: SpaceFile) => {
+            // Store id by file_name for lookup
+            idMap[file.file_name] = file.id;
+            
+            // Get title from metadata or file_name
+            if (file.metadata && file.metadata.title) {
+              noteTitles[file.id] = file.metadata.title;
+            } else {
+              // Format file name as title
+              const name = file.file_name
+                .replace(/\.json$/, "")
+                .replace(/_/g, " ")
+                .replace(/Note-/i, "");
+              noteTitles[file.id] = name;
+            }
+          });
+          
+          setNoteTitlesMap(noteTitles);
+          setNoteIdMap(idMap);
+          
+          // Now process all related_note_ids
+          const validatedRelatedNotes = new Map<string, string[]>();
+          
+          researchData.forEach((entry: ResearchEntry) => {
+            if (entry.related_note_ids && entry.related_note_ids.length > 0) {
+              // Convert any filename references to actual UUIDs
+              const validatedIds = entry.related_note_ids.map(noteRef => {
+                // If it's already a UUID, use it directly
+                if (isUUID(noteRef)) {
+                  return noteRef;
+                }
+                // If it's a filename, try to get the UUID from our map
+                else if (idMap[noteRef]) {
+                  return idMap[noteRef];
+                }
+                // Otherwise, it's invalid - return empty string to filter out later
+                return "";
+              }).filter(id => id !== ""); // Remove any invalid/unmapped IDs
+              
+              // Store the validated IDs
+              if (entry.metadata && entry.metadata.id) {
+                validatedRelatedNotes.set(entry.metadata.id, validatedIds);
+              }
+            }
+          });
+          
+          // Update any research entries we've found related notes for
+          if (selectedNode && selectedNode.noteId && validatedRelatedNotes.has(selectedNode.noteId)) {
+            setRelatedNoteIds(validatedRelatedNotes.get(selectedNode.noteId) || []);
+          }
+        }
       }
 
       setError(null);
@@ -223,12 +341,47 @@ const HierarchicalGraph = ({
     }
   }, [selectedNodeId, selectedNode, mainGraphData, isLoading]);
 
+  // Load related notes when selectedNode changes
+  useEffect(() => {
+    if (!selectedNode || isLoading || !researchEntries.length) return;
+    
+    // When a node is selected, find its research entry and related note IDs
+    const nodeId = selectedNode.noteId;
+    if (nodeId) {
+      // Find research entry by matching the metadata.id with the node's noteId
+      const entry = researchEntries.find(
+        entry => entry.metadata && entry.metadata.id === nodeId
+      );
+      
+      if (entry) {
+        // Set content for the markdown display
+        setMarkdownContent(entry.content);
+        
+        // Set related note IDs for the links, converting filenames to UUIDs where needed
+        const validatedIds = entry.related_note_ids 
+          ? entry.related_note_ids.map(noteRef => {
+              if (isUUID(noteRef)) {
+                return noteRef;
+              } else if (noteIdMap[noteRef]) {
+                return noteIdMap[noteRef];
+              }
+              return "";
+            }).filter(id => id !== "") // Remove any invalid/unmapped IDs
+          : [];
+          
+        setRelatedNoteIds(validatedIds);
+      } else {
+        setRelatedNoteIds([]);
+      }
+    }
+  }, [selectedNode, isLoading, researchEntries, noteIdMap]);
+
   // Effect to handle graph data changes and apply zoom
   useEffect(() => {
     // When the graph data changes or is initially set
     if (fgRef.current && graphData) {
       // Customize the forces for better spacing with larger nodes
-      fgRef.current.d3Force("charge").strength(-3000); // Stronger repulsion between nodes
+      fgRef.current.d3Force("charge").strength(-500); // Stronger repulsion between nodes
 
       // Dynamically adjust link distance based on connected node label lengths
       graphData.links.forEach((link) => {
@@ -258,32 +411,13 @@ const HierarchicalGraph = ({
       fgRef.current
         .d3Force("link")
         .distance((link: any) => link.distance || 240);
-      fgRef.current.d3Force("center").strength(0.12); // Slightly stronger centering force
+      // Increase centering force to pull components together
+      fgRef.current.d3Force("center").strength(0.75); 
 
       // Reheat simulation to apply new forces
       fgRef.current.d3ReheatSimulation();
     }
   }, [graphData]);
-
-  // Apply zoom whenever container dimensions change or the isFullScreen state changes
-  useEffect(() => {
-    // Only proceed if we have a valid graph reference and dimensions
-    if (
-      fgRef.current &&
-      containerDimensions.width > 0 &&
-      containerDimensions.height > 0 &&
-      graphData
-    ) {
-      // Allow the graph a moment to stabilize before zooming
-      setTimeout(() => {
-        if (fgRef.current) {
-          // Calculate appropriate padding based on whether this is fullscreen or a preview
-          const padding = isFullScreen ? 150 : 40;
-          fgRef.current.zoomToFit(400, padding);
-        }
-      }, 500);
-    }
-  }, [containerDimensions, isFullScreen, graphData]);
 
   // Handle node click
   const handleNodeClick = (node: GraphNode) => {
@@ -293,8 +427,27 @@ const HierarchicalGraph = ({
       setCurrentView("detailed", node.id);
     } else if (currentView === "detailed" && node.noteId) {
       // Second-level navigation: from detailed graph to markdown content
-      if (markdownDataMap[node.noteId]) {
-        setMarkdownContent(markdownDataMap[node.noteId]);
+      // Find research entry by matching the metadata.id with the node's noteId
+      const entry = researchEntries.find(
+        entry => entry.metadata && entry.metadata.id === node.noteId
+      );
+      
+      if (entry) {
+        setMarkdownContent(entry.content);
+        
+        // Process related note IDs, converting filenames to UUIDs where needed
+        const validatedIds = entry.related_note_ids 
+          ? entry.related_note_ids.map(noteRef => {
+              if (isUUID(noteRef)) {
+                return noteRef;
+              } else if (noteIdMap[noteRef]) {
+                return noteIdMap[noteRef];
+              }
+              return "";
+            }).filter(id => id !== "")
+          : [];
+          
+        setRelatedNoteIds(validatedIds);
         setShowMarkdown(true);
       }
     }
@@ -315,6 +468,25 @@ const HierarchicalGraph = ({
     // Just close the markdown overlay, keeping the detailed view
     setShowMarkdown(false);
     setMarkdownContent("");
+  };
+
+  // Handle opening a note
+  const handleOpenNote = (noteId: string) => {
+    // Make sure we're using a valid UUID
+    if (!isUUID(noteId) && noteIdMap[noteId]) {
+      noteId = noteIdMap[noteId];
+    }
+    
+    // Only proceed if we have a valid UUID
+    if (isUUID(noteId)) {
+      // Update layout state to open the note
+      setLayout({
+        selectedView: "notes",
+        selectedNoteId: noteId,
+      });
+    } else {
+      console.error("Cannot open note: Invalid note ID", noteId);
+    }
   };
 
   // Render function for nodes
@@ -489,6 +661,28 @@ const HierarchicalGraph = ({
     }
   };
 
+  // Helper function to get note title from metadata
+  const getNoteTitle = (noteId: string): string => {
+    // If the noteId is a filename rather than UUID, try to convert it first
+    const actualId = isUUID(noteId) ? noteId : (noteIdMap[noteId] || noteId);
+    
+    // Look up the title in our map
+    if (noteTitlesMap[actualId]) {
+      return noteTitlesMap[actualId];
+    }
+    
+    // For filenames that didn't get mapped, try to extract a readable name
+    if (!isUUID(noteId)) {
+      return noteId
+        .replace(/\.json$/, "")
+        .replace(/_/g, " ")
+        .replace(/Note-/i, "");
+    }
+    
+    // Fallback to a generic title
+    return "Note";
+  };
+
   // Show loading state
   if (isLoading) {
     return (
@@ -551,38 +745,61 @@ const HierarchicalGraph = ({
             nodeRelSize={6}
             width={containerDimensions.width}
             height={containerDimensions.height}
+            // Add onEngineStop callback to handle zoom after simulation stabilizes
+            onEngineStop={() => {
+              if (fgRef.current) {
+                // Calculate appropriate padding based on the current view
+                let padding: number;
+                if (currentView === 'graph') {
+                  padding = 150; // Padding for main graph view
+                } else if (currentView === 'detailed') {
+                  padding = 250; // More padding for detailed view (less zoom)
+                } else { // Covers 'preview'
+                  padding = 40;  // Keep tighter zoom for preview
+                }
+                fgRef.current.zoomToFit(400, padding);
+              }
+            }}
           />
         )}
 
-      {/* Markdown popup overlay - using fixed positioning for full screen overlay */}
+      {/* Note links panel - replaces markdown with clickable links */}
       {showMarkdown && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-20">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative">
-            <button
-              onClick={handleCloseMarkdown}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+            <div className="absolute top-0 left-0 right-0 bg-gray-50 p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Related Notes</h3>
+              <button
+                onClick={handleCloseMarkdown}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                aria-label="Close"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+                <XCircle size={24} />
+              </button>
+            </div>
 
-            {/* Scrollable content */}
-            <div className="flex-1 overflow-auto p-6 pt-20">
-              <MarkdownRenderer
-                content={`### Relevant Notes: [Note1](https://example.com/note1), [Note2](https://example.com/note2), [Note3](https://example.com/note3), [Note4](https://example.com/note4), [Note5](https://example.com/note5), [Note6](https://example.com/note6), [Note7](https://example.com/note7), [Note8](https://example.com/note8), [Note9](https://example.com/note9), [Note10](https://example.com/note10) \n --- \n \n ${markdownContent}`}
-              />
+            {/* Related notes links at the top */}
+            <div className="pt-16 px-6 pb-2 bg-gray-50 border-b">
+              <div className="flex flex-wrap gap-2 my-2">
+                {relatedNoteIds && relatedNoteIds.length > 0 ? (
+                  relatedNoteIds.map((noteId) => (
+                    <button
+                      key={noteId}
+                      onClick={() => handleOpenNote(noteId)}
+                      className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200 hover:bg-blue-100 transition-colors text-sm"
+                    >
+                      {getNoteTitle(noteId)}
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No related notes found</p>
+                )}
+              </div>
+            </div>
+
+            {/* Scrollable markdown content */}
+            <div className="flex-1 overflow-auto p-6">
+              <MarkdownRenderer content={markdownContent} />
             </div>
           </div>
         </div>
