@@ -1,48 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSupabaseUser } from "../../contexts/UserContext";
 import HierarchicalGraph from "./Graph";
-import BlockNoteEditor from "../note/NoteEditor";
 import { useLayoutState } from "../../hooks/useLayoutState";
-import { CalendarIcon, ClockIcon, TagIcon, TrendingUp, FileTextIcon, GitGraph, SettingsIcon, BrainCircuit, SearchIcon, RefreshCwIcon } from "lucide-react";
+import { isUUID } from "./components/utils";
+import { BrainNote, ResearchEntry, BrainStatistics, ResearchDigest } from "./components/types";
 
-// Define interfaces for our data types
-interface BrainNoteMetadata {
-  tags?: string[];
-  emoji?: string;
-  title?: string;
-  [key: string]: any;
-}
-
-interface BrainNote {
-  id: string;
-  space_id: string;
-  user_id: string;
-  file_name: string;
-  file_path: string;
-  file_type: string;
-  file_size: number;
-  is_note: boolean;
-  is_brain_note: boolean;
-  note_content: string;
-  metadata?: BrainNoteMetadata;
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface ResearchEntry {
-  id: string;
-  content?: string;
-  created_at: string;
-  updated_at: string;
-  metadata?: {
-    label?: string;
-    emoji?: string;
-    tags?: string[];
-    [key: string]: any;
-  };
-  related_data?: any;
-  [key: string]: any;
-}
+// Import components
+import BrainNoteComponent from "./components/BrainNote";
+import DigestList from "./components/DigestList";
+import DigestModal from "./components/DigestModal";
+import QuickStats from "./components/QuickStats";
+import QuickActions from "./components/QuickActions";
+import GraphPreview from "./components/GraphPreview";
+import ProgressModal from "./components/ProgressModal";
 
 interface BrainInterfaceProps {
   currentView: "main" | "graph";
@@ -62,9 +32,8 @@ const BrainInterface = ({
   const [recentEntries, setRecentEntries] = useState<ResearchEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
   const [isCreatingBrainNote, setIsCreatingBrainNote] = useState<boolean>(false);
-  const [statistics, setStatistics] = useState({
+  const [statistics, setStatistics] = useState<BrainStatistics>({
     totalEntries: 0,
     totalTags: 0,
     lastUpdated: '',
@@ -74,11 +43,66 @@ const BrainInterface = ({
   const { getSupabaseClient, supabaseUserId } = useSupabaseUser();
   const [activeTab, setActiveTab] = useState<'brain' | 'digest'>('brain');
   
-  // New state for graph generation
+  // State for research digests
+  const [researchDigests, setResearchDigests] = useState<ResearchDigest[]>([]);
+  const [isGeneratingDigest, setIsGeneratingDigest] = useState<boolean>(false);
+  const [digestGenerationStatus, setDigestGenerationStatus] = useState<string>("");
+  const [digestGenerationProgress, setDigestGenerationProgress] = useState<number>(0);
+  const [digestGenerationError, setDigestGenerationError] = useState<string | null>(null);
+  const [selectedDigest, setSelectedDigest] = useState<ResearchDigest | null>(null);
+  const [isDigestModalOpen, setIsDigestModalOpen] = useState<boolean>(false);
+  
+  // State for graph generation
   const [isGeneratingGraph, setIsGeneratingGraph] = useState<boolean>(false);
   const [graphGenerationStatus, setGraphGenerationStatus] = useState<string>("");
   const [graphGenerationProgress, setGraphGenerationProgress] = useState<number>(0);
   const [graphGenerationError, setGraphGenerationError] = useState<string | null>(null);
+  
+  // Get note titles from note IDs - similar to what Graph.tsx does
+  const [noteTitlesMap, setNoteTitlesMap] = useState<Record<string, string>>({});
+  const [noteIdMap, setNoteIdMap] = useState<Record<string, string>>({});
+
+  // Helper function to get note title from ID
+  const getNoteTitle = (noteId: string): string => {
+    // If the noteId is a filename rather than UUID, try to convert it first
+    const actualId = isUUID(noteId) ? noteId : (noteIdMap[noteId] || noteId);
+    
+    // Look up the title in our map
+    if (noteTitlesMap[actualId]) {
+      return noteTitlesMap[actualId];
+    }
+    
+    // For filenames that didn't get mapped, try to extract a readable name
+    if (!isUUID(noteId)) {
+      return noteId
+        .replace(/\.json$/, "")
+        .replace(/_/g, " ")
+        .replace(/Note-/i, "");
+    }
+    
+    // Fallback to a generic title
+    return "Note";
+  };
+
+  // Handle opening a note
+  const handleOpenNote = (noteId: string) => {
+    // Make sure we're using a valid UUID
+    if (!isUUID(noteId) && noteIdMap[noteId]) {
+      noteId = noteIdMap[noteId];
+    }
+    
+    // Only proceed if we have a valid UUID
+    if (isUUID(noteId)) {
+      // Update layout state to open the note
+      setLayout({
+        selectedView: "notes",
+        selectedNoteId: noteId,
+      });
+    } else {
+      console.error("Cannot open note: Invalid note ID", noteId);
+      console.log(recentEntries);
+    }
+  };
 
   // Fetch brain note and recent entries when component mounts
   useEffect(() => {
@@ -179,6 +203,58 @@ const BrainInterface = ({
             });
           }
         }
+
+        // Fetch research digests
+        const { data: digestsData, error: digestsError } =
+          await supabaseClient
+            .from("space_digests")
+            .select("*")
+            .eq("space_id", spaceId)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+        if (digestsError) {
+          console.error("Error fetching research digests:", digestsError);
+        } else {
+          setResearchDigests(digestsData || []);
+          
+          // Fetch all note files to build title and ID maps, if not already populated
+          if (Object.keys(noteTitlesMap).length === 0) {
+            const { data: allFiles, error: filesError } = await supabaseClient
+              .from("space_files")
+              .select("id, file_name, file_path, metadata, is_note")
+              .eq("space_id", spaceId)
+              .eq("is_note", true);
+              
+            if (filesError) {
+              console.error("Error fetching note files:", filesError);
+            } else if (allFiles) {
+              // Create mappings for note titles and file_name to id
+              const noteTitles: Record<string, string> = {};
+              const idMap: Record<string, string> = {};
+              
+              allFiles.forEach((file: any) => {
+                // Store id by file_name for lookup
+                idMap[file.file_name] = file.id;
+                
+                // Get title from metadata or file_name
+                if (file.metadata && file.metadata.title) {
+                  noteTitles[file.id] = file.metadata.title;
+                } else {
+                  // Format file name as title
+                  const name = file.file_name
+                    .replace(/\.json$/, "")
+                    .replace(/_/g, " ")
+                    .replace(/Note-/i, "");
+                  noteTitles[file.id] = name;
+                }
+              });
+              
+              setNoteTitlesMap(noteTitles);
+              setNoteIdMap(idMap);
+            }
+          }
+        }
       } catch (error) {
         console.error("Error in fetchBrainData:", error);
       } finally {
@@ -187,9 +263,9 @@ const BrainInterface = ({
     };
 
     fetchBrainData();
-  }, [spaceId, getSupabaseClient, supabaseUserId, isCreatingBrainNote]);
+  }, [spaceId, getSupabaseClient, supabaseUserId, isCreatingBrainNote, layout]);
 
-  // Create a new brain note - completely rewritten to match index.tsx pattern
+  // Create a new brain note
   const createNewBrainNote = async (supabaseClient: any, spaceId: string) => {
     if (!spaceId || !supabaseUserId) {
       console.error("Missing required information to create brain note");
@@ -296,156 +372,162 @@ const BrainInterface = ({
     }
   };
 
-  // Save brain note content - using the approach from NotesInterface
-  const handleSaveBrainNote = useCallback(
-    async (content: string) => {
-      if (!brainNoteId || !brainNote?.file_path) return;
-      if (isSavingNote) return;
+  // Function to handle research digest generation
+  const handleGenerateDigest = async () => {
+    if (!spaceId || !supabaseUserId) {
+      console.error("Missing required information to generate digest");
+      setDigestGenerationError("Missing space ID or user ID");
+      return;
+    }
 
-      // Set saving state to avoid duplicate saves
-      setIsSavingNote(true);
+    // Switch to the digest tab to show the progress
+    setActiveTab('digest');
 
-      try {
-        // Update local state immediately to maintain editor state
-        setBrainNoteContent(content);
-
-        const supabaseClient = await getSupabaseClient();
-
-        // Save to database
-        const { error: dbError } = await supabaseClient
-          .from("space_files")
-          .update({ note_content: content })
-          .eq("id", brainNoteId);
-
-        if (dbError) {
-          console.error("Error saving brain note to database:", dbError);
-          return;
-        }
-
-        // Save to storage as well
-        const contentBlob = new Blob([content], { type: "application/json" });
-        const { error: storageError } = await supabaseClient.storage
-          .from("Vox")
-          .update(brainNote.file_path, contentBlob, {
-            cacheControl: "3600",
-            upsert: true,
-          });
-
-        if (storageError) {
-          console.error("Error saving brain note to storage:", storageError);
-        }
-      } catch (error) {
-        console.error("Error in handleSaveBrainNote:", error);
-      } finally {
-        // Add a small delay before setting isSavingNote to false to make the UI feedback more visible
-        setTimeout(() => {
-          setIsSavingNote(false);
-        }, 500);
-      }
-    },
-    [brainNoteId, brainNote, getSupabaseClient, isSavingNote],
-  );
-
-  // Clear brain note content
-  const handleClearBrainNote = async () => {
-    if (!brainNoteId || !brainNote?.file_path) return;
+    // Set up a refresh interval for real-time updates during generation
+    const refreshInterval = setInterval(() => {
+      refreshDigests();
+    }, 5000); // Refresh every 5 seconds during generation
 
     try {
-      // Create empty content in JSON format for BlockNote
-      const emptyContent = JSON.stringify({
-        type: "doc",
-        content: [
-          {
-            type: "heading",
-            attrs: { level: 1 },
-            content: [{ type: "text", text: "Second Brain" }],
-          },
-        ],
+      setIsGeneratingDigest(true);
+      setDigestGenerationStatus("Starting digest generation...");
+      setDigestGenerationProgress(0);
+      setDigestGenerationError(null);
+
+      // Call the digest generation endpoint
+      const response = await fetch("https://voxed.aidanandrews.org/api/v1/research/digest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          space_id: spaceId,
+          user_id: supabaseUserId,
+          stream: true,
+        }),
       });
 
-      // Update local state first to maintain UI responsiveness
-      setBrainNoteContent(emptyContent);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Failed to get response reader");
+      }
+
+      // Define progress stages
+      const progressStages = {
+        "Starting digest generation...": 5,
+        "Fetching notes from space...": 10,
+        "Found": 15, // Partial match for "Found X notes in space"
+        "Generating search queries": 20,
+        "Generated": 25, // Partial match for "Generated X search queries"
+        "Performing web searches...": 30,
+        "Searching query": 35, // Partial match for "Searching query X of Y"
+        "Completed search": 60, // Partial match for "Completed search X of Y"
+        "Generating research digest": 75,
+        "Storing digest in database...": 90,
+        "Digest generation complete": 100
+      };
+
+      // Process streaming response
+      let decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete events in buffer
+        let lines = buffer.split("\n\n");
+        buffer = lines.pop() || ""; // Keep the last incomplete chunk in the buffer
+
+        for (const line of lines) {
+          if (line.trim() === "" || !line.startsWith("data: ")) continue;
+          
+          try {
+            const eventData = JSON.parse(line.substring(6)); // Remove "data: " prefix
+            
+            if (eventData.type === "status") {
+              setDigestGenerationStatus(eventData.message);
+              
+              // Update progress based on status message
+              for (const [stage, progress] of Object.entries(progressStages)) {
+                if (eventData.message.includes(stage)) {
+                  setDigestGenerationProgress(progress as number);
+                  break;
+                }
+              }
+            } else if (eventData.type === "error") {
+              setDigestGenerationError(eventData.message);
+              setDigestGenerationStatus("Error generating digest");
+            } else if (eventData.type === "done") {
+              setDigestGenerationStatus("Digest generation complete");
+              setDigestGenerationProgress(100);
+              
+              // Refresh digests from the database
+              refreshDigests();
+              
+              // Set a timeout to change the state back after progress is complete
+              setTimeout(() => {
+                setIsGeneratingDigest(false);
+              }, 1000);
+            }
+          } catch (e) {
+            console.error("Error parsing event data:", e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error generating digest:", e);
+      setDigestGenerationError(e instanceof Error ? e.message : "Unknown error");
+      setDigestGenerationStatus("Error generating digest");
+      
+      // If there's an error, we'll wait a bit before stopping the spinner
+      setTimeout(() => {
+        setIsGeneratingDigest(false);
+      }, 3000);
+    } finally {
+      // Clear the refresh interval
+      clearInterval(refreshInterval);
+      
+      // No need to set isGeneratingDigest to false here as we handle it in the success/error cases
+      // This prevents the spinner from stopping before the UI has a chance to show completion
+      
+      // One final refresh to make sure we have the latest data
+      refreshDigests();
+    }
+  };
+
+  // Function to refresh digests from the database
+  const refreshDigests = async () => {
+    if (!spaceId) return;
+
+    try {
       const supabaseClient = await getSupabaseClient();
+      
+      // Fetch research digests
+      const { data: digestsData, error: digestsError } =
+        await supabaseClient
+          .from("space_digests")
+          .select("*")
+          .eq("space_id", spaceId)
+          .order("created_at", { ascending: false })
+          .limit(10);
 
-      // Update in database
-      const { error: dbError } = await supabaseClient
-        .from("space_files")
-        .update({ note_content: emptyContent })
-        .eq("id", brainNoteId);
-
-      if (dbError) {
-        console.error("Error clearing brain note in database:", dbError);
-        return;
+      if (digestsError) {
+        console.error("Error fetching research digests:", digestsError);
+      } else {
+        setResearchDigests(digestsData || []);
       }
-
-      // Update in storage
-      const contentBlob = new Blob([emptyContent], {
-        type: "application/json",
-      });
-      const { error: storageError } = await supabaseClient.storage
-        .from("Vox")
-        .update(brainNote.file_path, contentBlob, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-
-      if (storageError) {
-        console.error("Error clearing brain note in storage:", storageError);
-        return;
-      }
-
-      // Update brainNote in state
-      setBrainNote((prevNote) => {
-        if (!prevNote) return null;
-        return {
-          ...prevNote,
-          note_content: emptyContent,
-        };
-      });
     } catch (error) {
-      console.error("Error in handleClearBrainNote:", error);
+      console.error("Error in refreshDigests:", error);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Format relative time
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (diffMins < 60) {
-      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    } else if (diffDays < 30) {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    } else {
-      return formatDate(dateString);
-    }
-  };
-
-  // Extract title from metadata or provide default
-  const getEntryTitle = (entry: ResearchEntry) => {
-    return entry.metadata?.label || "Untitled Entry";
-  };
-
-  // Function to handle graph generation
   const handleRebuildGraph = async () => {
     if (!spaceId || !supabaseUserId) {
       console.error("Missing required information to generate graph");
@@ -564,6 +646,16 @@ const BrainInterface = ({
     });
   };
 
+  const handleViewDigest = (digest: ResearchDigest) => {
+    setSelectedDigest(digest);
+    setIsDigestModalOpen(true);
+  };
+
+  const handleCloseDigestModal = () => {
+    setSelectedDigest(null);
+    setIsDigestModalOpen(false);
+  };
+
   return (
     <div className="h-full w-full flex flex-col overflow-auto bg-background">
       {currentView === "main" && (
@@ -572,128 +664,21 @@ const BrainInterface = ({
           <div className="flex-1 p-4 grid grid-cols-12 gap-4 h-full overflow-hidden">
             {/* Left Sidebar - with its own overflow */}
             <div className="col-span-12 lg:col-span-3 lg:border-r border-gray-200 dark:border-gray-700 pr-4 overflow-y-auto max-h-full">
-              {/* Search Bar */}
-              <div className="flex items-center space-x-3 pt-4 mb-6">
-                  <div className="relative">
-                    <SearchIcon className="h-4 w-4 absolute left-2.5 top-2.5 text-gray-500" />
-                    <input 
-                      type="text" 
-                      placeholder="Search..." 
-                      className="pl-8 pr-4 py-2 rounded-md text-sm bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
-                  <button 
-                    onClick={() => window.location.reload()}
-                    className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
-                  >
-                    <RefreshCwIcon className="h-5 w-5" />
-                  </button>
-              </div>
               {/* Quick Stats */}
-              <div className="mb-6">
-                <h2 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Quick Stats</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 bg-indigo-100 dark:bg-indigo-900 p-1.5 rounded-md">
-                        <FileTextIcon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400" />
-                      </div>
-                      <div className="ml-2 sm:ml-3 min-w-0">
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Entries</p>
-                        <p className="text-lg sm:text-xl font-semibold">{statistics.totalEntries}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 bg-green-100 dark:bg-green-900 p-1.5 rounded-md">
-                        <TagIcon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div className="ml-2 sm:ml-3 min-w-0">
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Tags</p>
-                        <p className="text-lg sm:text-xl font-semibold">{statistics.totalTags}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 bg-blue-100 dark:bg-blue-900 p-1.5 rounded-md">
-                        <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="ml-2 sm:ml-3 min-w-0">
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">This Week</p>
-                        <p className="text-lg sm:text-xl font-semibold">{statistics.entriesThisWeek}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-background rounded-lg p-2.5 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 bg-amber-100 dark:bg-amber-900 p-1.5 rounded-md">
-                        <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div className="ml-2 sm:ml-3 min-w-0">
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Last Update</p>
-                        <p className="text-xs sm:text-sm font-medium truncate">
-                          {statistics.lastUpdated ? formatRelativeTime(statistics.lastUpdated) : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <QuickStats statistics={statistics} />
 
               {/* Knowledge Graph Preview */}
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200">Knowledge Graph</h2>
-                  <button 
-                    onClick={() => setCurrentView("graph")}
-                    className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
-                  >
-                    Full View
-                  </button>
-                </div>
-                <div 
-                  className="bg-background rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-52 overflow-hidden relative cursor-pointer"
-                  onClick={() => setCurrentView("graph")}
-                >
-                  <HierarchicalGraph
-                    currentView="preview"
-                    setCurrentView={setCurrentView}
-                    spaceId={spaceId}
-                  />
-                </div>
-              </div>
+              <GraphPreview 
+                setCurrentView={setCurrentView}
+                spaceId={spaceId}
+              />
 
               {/* Quick Actions */}
-              <div>
-                <h2 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Quick Actions</h2>
-                <div className="space-y-2">
-                  <button className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
-                    <BrainCircuit className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
-                    <span>Start Agent Researching</span>
-                  </button>
-                  <button 
-                    onClick={handleOpenEditor}
-                    className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors"
-                  >
-                    <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
-                    <span>View Agent Status</span>
-                  </button>
-                  <button 
-                    onClick={handleRebuildGraph}
-                    disabled={isGeneratingGraph}
-                    className={`w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors ${isGeneratingGraph ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  >
-                    <GitGraph className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
-                    <span>{isGeneratingGraph ? "Generating Graph..." : "Rebuild Graph"}</span>
-                  </button>
-                  <button className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
-                    <SettingsIcon className="h-5 w-5 text-gray-600 dark:text-gray-400 mr-2" />
-                    <span>Settings</span>
-                  </button>
-                </div>
-              </div>
+              <QuickActions 
+                handleRebuildGraph={handleRebuildGraph}
+                handleOpenEditor={handleOpenEditor}
+                isGeneratingGraph={isGeneratingGraph}
+              />
             </div>
 
             {/* Main Content Area - with its own overflow */}
@@ -726,179 +711,53 @@ const BrainInterface = ({
                 </div>
 
                 <div className="flex-1 overflow-auto">
-                  {/* Display graph generation status if active */}
-                  {isGeneratingGraph && (
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-10 flex items-center justify-center">
-                      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-                        <h3 className="text-lg font-medium mb-4">Generating Knowledge Graph</h3>
-                        
-                        <div className="mb-4">
-                          <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-300 ease-in-out"
-                              style={{ width: `${graphGenerationProgress}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-right text-xs mt-1 text-gray-500">{graphGenerationProgress}%</p>
-                        </div>
-                        
-                        <p className="mb-2">{graphGenerationStatus}</p>
-                        
-                        {graphGenerationError && (
-                          <p className="text-red-500 text-sm">{graphGenerationError}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
+                  {/* Progress Modals */}
+                  <ProgressModal 
+                    isActive={isGeneratingGraph}
+                    title="Generating Knowledge Graph"
+                    progress={graphGenerationProgress}
+                    status={graphGenerationStatus}
+                    error={graphGenerationError}
+                  />
+                  
                   {/* Brain Note Card */}
                   {activeTab === 'brain' && (
-                    <div className="h-full flex flex-col">
-                      <div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-background">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <span className="text-2xl mr-2">🧠</span>
-                            <h2 className="text-lg font-medium">Second Brain Note</h2>
-                            <span
-                              className={`ml-2 text-xs transition-opacity duration-300 ${isLoading ? "text-yellow-500" : error ? "text-red-500" : isSavingNote ? "text-yellow-500" : "text-green-500"}`}
-                            >
-                              {isLoading ? "loading..." : error ? "error saving" : isSavingNote ? "saving..." : "saved"}
-                            </span>
-                          </div>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={handleOpenEditor}
-                              className="px-3 py-1.5 text-sm bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-600 dark:text-indigo-300 rounded-md transition-colors"
-                            >
-                              Open Editor
-                            </button>
-                            <button
-                              onClick={handleClearBrainNote}
-                              className="px-3 py-1.5 text-sm bg-red-50 hover:bg-red-100 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-300 rounded-md transition-colors"
-                            >
-                              Clear
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex mt-2">
-                          {brainNote?.metadata?.tags?.map(
-                            (tag: string, index: number) => (
-                              <span
-                                key={index}
-                                className="mr-2 px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full"
-                              >
-                                {tag}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      </div>
+                    <BrainNoteComponent 
+                      brainNote={brainNote}
+                      brainNoteId={brainNoteId}
+                      brainNoteContent={brainNoteContent}
+                      setBrainNoteContent={setBrainNoteContent}
+                      setBrainNote={setBrainNote}
+                      isLoading={isLoading}
+                      error={error}
+                      handleOpenEditor={handleOpenEditor}
+                    />
+                  )}
 
-                      <div className="flex-1 p-1 overflow-auto">
-                        {isLoading ? (
-                          <div className="flex-1 flex items-center justify-center h-full">
-                            <div className="animate-pulse flex flex-col items-center">
-                              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full mb-2"></div>
-                              <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                              <div className="text-sm text-gray-500">Loading brain note...</div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="h-full overflow-auto">
-                            {brainNoteId && (
-                              <BlockNoteEditor
-                                onClose={() => {}}
-                                noteId={brainNoteId}
-                                noteContent={brainNoteContent}
-                                onSave={handleSaveBrainNote}
-                                noteName="Second Brain"
-                                isChild={true}
-                                isLoading={isSavingNote}
-                                setIsLoading={setIsSavingNote}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                  {/* Digest Modal */}
+                  {isDigestModalOpen && selectedDigest && (
+                    <DigestModal 
+                      selectedDigest={selectedDigest}
+                      handleCloseDigestModal={handleCloseDigestModal}
+                      getNoteTitle={getNoteTitle}
+                      handleOpenNote={handleOpenNote}
+                    />
                   )}
 
                   {/* Recent Digest */}
                   {activeTab === 'digest' && (
-                    <div className="h-full flex flex-col">
-                      <div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-background">
-                        <div className="flex justify-between items-center">
-                          <h2 className="text-lg font-medium">Recent Research Digest</h2>
-                          <button className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium">
-                            View All
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="p-4 flex-1 overflow-auto">
-                        {isLoading ? (
-                          <div className="space-y-4">
-                            {[...Array(3)].map((_, i) => (
-                              <div key={i} className="animate-pulse">
-                                <div className="h-5 w-1/3 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
-                                <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : recentEntries.length > 0 ? (
-                          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {recentEntries.map((entry) => (
-                              <div
-                                key={entry.id}
-                                className="py-4 first:pt-0 last:pb-0 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                              >
-                                <div className="flex items-start justify-between mb-1">
-                                  <h3 className="font-medium text-lg flex items-center">
-                                    {entry.metadata?.emoji && (
-                                      <span className="mr-2">{entry.metadata.emoji}</span>
-                                    )}
-                                    {getEntryTitle(entry)}
-                                  </h3>
-                                  <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
-                                    {formatRelativeTime(entry.updated_at)}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                                  {entry.content?.substring(0, 160) || "No content"}...
-                                </p>
-                                {entry.metadata?.tags && entry.metadata.tags.length > 0 && (
-                                  <div className="flex flex-wrap mt-2">
-                                    {entry.metadata.tags.slice(0, 3).map((tag: string, index: number) => (
-                                      <span
-                                        key={index}
-                                        className="mr-2 mb-1 px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
-                                      >
-                                        #{tag}
-                                      </span>
-                                    ))}
-                                    {entry.metadata.tags.length > 3 && (
-                                      <span className="text-xs text-gray-500 flex items-center">
-                                        +{entry.metadata.tags.length - 3} more
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center p-8 text-gray-500 bg-background rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-                            <div className="text-center">
-                              <p>No recent entries found.</p>
-                              <p className="text-sm mt-2">
-                                Start adding research notes to see them here.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <DigestList 
+                      researchDigests={researchDigests}
+                      isLoading={isLoading}
+                      handleGenerateDigest={handleGenerateDigest}
+                      handleViewDigest={handleViewDigest}
+                      noteTitlesMap={noteTitlesMap}
+                      handleOpenNote={handleOpenNote}
+                      isGeneratingDigest={isGeneratingDigest}
+                      digestGenerationProgress={digestGenerationProgress}
+                      digestGenerationStatus={digestGenerationStatus}
+                      digestGenerationError={digestGenerationError}
+                    />
                   )}
                 </div>
               </div>
