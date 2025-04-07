@@ -657,7 +657,6 @@ const BrainInterface = ({
                   className="bg-background rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm h-52 overflow-hidden relative cursor-pointer"
                   onClick={() => setCurrentView("graph")}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white dark:to-gray-800 opacity-30"></div>
                   <HierarchicalGraph
                     currentView="preview"
                     setCurrentView={setCurrentView}

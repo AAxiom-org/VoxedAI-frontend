@@ -717,7 +717,7 @@ const HierarchicalGraph = ({
   }
 
   return (
-    <div className="relative h-full w-full" ref={containerRef}>
+    <div className={`relative h-full w-full ${currentView === "preview" ? "pointer-events-none" : ""}`} ref={containerRef}>
       {currentView === "detailed" && (
         <button
           onClick={handleBackClick}
