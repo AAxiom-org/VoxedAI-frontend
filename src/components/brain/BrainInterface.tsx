@@ -73,6 +73,12 @@ const BrainInterface = ({
   const [layout, setLayout] = useLayoutState();
   const { getSupabaseClient, supabaseUserId } = useSupabaseUser();
   const [activeTab, setActiveTab] = useState<'brain' | 'digest'>('brain');
+  
+  // New state for graph generation
+  const [isGeneratingGraph, setIsGeneratingGraph] = useState<boolean>(false);
+  const [graphGenerationStatus, setGraphGenerationStatus] = useState<string>("");
+  const [graphGenerationProgress, setGraphGenerationProgress] = useState<number>(0);
+  const [graphGenerationError, setGraphGenerationError] = useState<string | null>(null);
 
   // Fetch brain note and recent entries when component mounts
   useEffect(() => {
@@ -439,6 +445,118 @@ const BrainInterface = ({
     return entry.metadata?.label || "Untitled Entry";
   };
 
+  // Function to handle graph generation
+  const handleRebuildGraph = async () => {
+    if (!spaceId || !supabaseUserId) {
+      console.error("Missing required information to generate graph");
+      setGraphGenerationError("Missing space ID or user ID");
+      return;
+    }
+
+    try {
+      setIsGeneratingGraph(true);
+      setGraphGenerationStatus("Starting graph generation...");
+      setGraphGenerationProgress(0);
+      setGraphGenerationError(null);
+
+      // Call the graph generation endpoint
+      const response = await fetch("https://voxed.aidanandrews.org/api/v1/graph/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          space_id: spaceId,
+          user_id: supabaseUserId,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Failed to get response reader");
+      }
+
+      // Define progress stages
+      const progressStages = {
+        "Starting graph generation...": 5,
+        "Fetching notes from space...": 10,
+        "Found": 15, // Partial match for "Found X notes in space"
+        "Analyzing notes and generating graph...": 30,
+        "Storing graph in database...": 70,
+        "Storing": 80, // Partial match for "Storing X research entries in database..."
+        "Graph generation complete": 100
+      };
+
+      // Process streaming response
+      let decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete events in buffer
+        let lines = buffer.split("\n\n");
+        buffer = lines.pop() || ""; // Keep the last incomplete chunk in the buffer
+
+        for (const line of lines) {
+          if (line.trim() === "" || !line.startsWith("data: ")) continue;
+          
+          try {
+            const eventData = JSON.parse(line.substring(6)); // Remove "data: " prefix
+            
+            if (eventData.type === "status") {
+              setGraphGenerationStatus(eventData.message);
+              
+              // Update progress based on status message
+              for (const [stage, progress] of Object.entries(progressStages)) {
+                if (eventData.message.includes(stage)) {
+                  setGraphGenerationProgress(progress as number);
+                  break;
+                }
+              }
+            } else if (eventData.type === "error") {
+              setGraphGenerationError(eventData.message);
+              setGraphGenerationStatus("Error generating graph");
+            } else if (eventData.type === "done") {
+              setGraphGenerationStatus("Graph generation complete");
+              setGraphGenerationProgress(100);
+              
+              // Refresh the graph if we're on the graph view
+              if (currentView === "graph") {
+                window.location.reload();
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing event data:", e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error generating graph:", e);
+      setGraphGenerationError(e instanceof Error ? e.message : "Unknown error");
+      setGraphGenerationStatus("Error generating graph");
+    } finally {
+      // Keep progress and status visible unless there was an error
+      if (graphGenerationError) {
+        setTimeout(() => {
+          setIsGeneratingGraph(false);
+        }, 3000);
+      } else {
+        setTimeout(() => {
+          setIsGeneratingGraph(false);
+        }, 1000);
+      }
+    }
+  };
+
   const handleOpenEditor = () => {
     setLayout({
       selectedView: "notes",
@@ -563,9 +681,13 @@ const BrainInterface = ({
                     <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
                     <span>View Agent Status</span>
                   </button>
-                  <button className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                  <button 
+                    onClick={handleRebuildGraph}
+                    disabled={isGeneratingGraph}
+                    className={`w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors ${isGeneratingGraph ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  >
                     <GitGraph className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
-                    <span>Rebuild Graph</span>
+                    <span>{isGeneratingGraph ? "Generating Graph..." : "Rebuild Graph"}</span>
                   </button>
                   <button className="w-full flex items-center p-3 bg-background hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
                     <SettingsIcon className="h-5 w-5 text-gray-600 dark:text-gray-400 mr-2" />
@@ -605,6 +727,31 @@ const BrainInterface = ({
                 </div>
 
                 <div className="flex-1 overflow-auto">
+                  {/* Display graph generation status if active */}
+                  {isGeneratingGraph && (
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm z-10 flex items-center justify-center">
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+                        <h3 className="text-lg font-medium mb-4">Generating Knowledge Graph</h3>
+                        
+                        <div className="mb-4">
+                          <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-300 ease-in-out"
+                              style={{ width: `${graphGenerationProgress}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-right text-xs mt-1 text-gray-500">{graphGenerationProgress}%</p>
+                        </div>
+                        
+                        <p className="mb-2">{graphGenerationStatus}</p>
+                        
+                        {graphGenerationError && (
+                          <p className="text-red-500 text-sm">{graphGenerationError}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Brain Note Card */}
                   {activeTab === 'brain' && (
                     <div className="h-full flex flex-col">
