@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Model types
 export const MODELS = {
-  NORMAL: "meta-llama/llama-4-maverick:free",
+  NORMAL: "google/gemini-2.0-flash-001",
   REASONING: "deepseek/deepseek-r1:free",
 } as const;
 
