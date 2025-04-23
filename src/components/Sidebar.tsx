@@ -19,6 +19,7 @@ import {
   Brain,
   Sun,
   Loader,
+  Blocks
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
@@ -55,6 +56,7 @@ interface SidebarProps {
   setShowChat: (show: boolean) => void;
   setShowNote: (show: boolean) => void;
   setShowSandbox: (show: boolean) => void;
+  setShowIntegrations: (show: boolean) => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   openNote?: (noteId: string) => void;
@@ -82,6 +84,7 @@ const Sidebar = ({
   setShowChat,
   setShowNote,
   setShowSandbox,
+  setShowIntegrations,
   fileInputRef,
   handleFileUpload,
   openNote,
@@ -219,6 +222,23 @@ const Sidebar = ({
         >
           <Brain size={24} />
           <a className="text-sm">Second Brain</a>
+        </button>
+      </div>
+
+      {/* Integrations */}
+      <div className="mx-4 my-2">
+        <button
+          onClick={() => {
+            setShowBrain(false);
+            setShowChat(false);
+            setShowNote(false);
+            setShowSandbox(false);
+            setShowIntegrations(true);
+          }}
+          className="text-gray-400 w-full rounded-md px-3 py-2 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+        >
+          <Blocks size={24} />
+          <a className="text-sm">Integrations</a>
         </button>
       </div>
 
@@ -539,8 +559,6 @@ const Sidebar = ({
             </div>
           )}
         </div>
-
-        {/* Links Section */}
 
         {/* Create new button */}
         <div className="relative">

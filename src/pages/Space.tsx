@@ -5,6 +5,7 @@ import Note from "../components/Note";
 import { useParams } from "react-router-dom";
 import Sandbox from "../components/code/Sandbox";
 import Brain from "../components/Brain";
+import Integrations from "../components/Integrations";
 import { useSupabaseUser } from "../contexts/UserContext";
 import {
   getSpaceFiles,
@@ -67,6 +68,7 @@ const Space = () => {
   const showNote = selectedView === "notes";
   const showSandbox = selectedView === "code";
   const showBrain = selectedView === "brain";
+  const showIntegrations = selectedView === "integrations";
 
   // Update state setters to work with the layout state
   const setSidebarOpen = (open: boolean) => setLayout({ sidebarOpen: open });
@@ -80,6 +82,8 @@ const Space = () => {
     show && setLayout({ selectedView: "code", selectedNoteId: null });
   const setShowBrain = (show: boolean) =>
     show && setLayout({ selectedView: "brain", selectedNoteId: null });
+  const setShowIntegrations = (show: boolean) =>
+    show && setLayout({ selectedView: "integrations", selectedNoteId: null });
   // Create a new setter for selectedNoteId
   const setSelectedNote = (noteId: string | null) => {
     console.log("Setting selected note:", noteId);
@@ -646,6 +650,7 @@ const Space = () => {
             setShowChat={setShowChat}
             setShowNote={setShowNote}
             setShowSandbox={setShowSandbox}
+            setShowIntegrations={setShowIntegrations}
             fileInputRef={fileInputRef}
             handleFileUpload={handleFileUpload}
             openNote={openNote}
@@ -685,7 +690,7 @@ const Space = () => {
             </div>
           </ResizablePanel>
         )}
-        {!showNote && !showChat && !showSandbox && showBrain && (
+        {!showNote && !showChat && !showSandbox && !showIntegrations && showBrain && (
           <ResizablePanel defaultRatio={0.7}>
             <div className="h-full py-2 overflow-auto max-h-screen overflow-y-auto">
               <Brain spaceId={spaceId} />
@@ -695,6 +700,7 @@ const Space = () => {
             </div>
           </ResizablePanel>
         )}
+        {!showBrain && !showNote && !showChat && !showSandbox && showIntegrations && ( <Integrations /> )}
       </div>
 
       {/* Add NoteModal component */}

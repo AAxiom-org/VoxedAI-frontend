@@ -5,7 +5,7 @@ interface LayoutState {
   sidebarOpen: boolean;
   filesExpanded: boolean;
   notesExpanded: boolean;
-  selectedView: "chat" | "notes" | "code" | "brain";
+  selectedView: "chat" | "notes" | "code" | "brain" | "integrations";
   selectedNoteId: string | null;
   selectedNodeId?: string | null;
   rightPanelCollapsed?: boolean;
