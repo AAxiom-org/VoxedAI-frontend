@@ -60,4 +60,4 @@ export interface BrainStatistics {
   totalTags: number;
   lastUpdated: string;
   entriesThisWeek: number;
-} 
+}

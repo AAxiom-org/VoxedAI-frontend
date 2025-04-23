@@ -123,11 +123,12 @@ const BlockNoteEditor = ({
   const [initialContentSet, setInitialContentSet] = useState<boolean>(false);
   const [content, setContent] = useState<string>(noteContent);
   const [localIsLoading, localSetIsLoading] = useState<boolean>(!noteContent);
-  
+
   // Use props if provided, otherwise use local state
-  const isLoading = propIsLoading !== undefined ? propIsLoading : localIsLoading;
+  const isLoading =
+    propIsLoading !== undefined ? propIsLoading : localIsLoading;
   const setIsLoading = propSetIsLoading || localSetIsLoading;
-  
+
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<BlockNoteEditorCore | null>(null);
   const { getSupabaseClient } = useSupabaseUser();

@@ -3,6 +3,7 @@ import { ChatSession } from "../../types/chat";
 import { supabase } from "../../services/supabase";
 import { useUser } from "@clerk/clerk-react";
 import { SearchIcon, X } from "lucide-react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 interface ChatSessionWithLastMessage extends ChatSession {
   lastMessage?: string;
@@ -149,7 +150,15 @@ const ChatGrid = ({
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-600"></div>
+          <DotLottieReact
+            className="w-10 md:w-10 lg:w-20"
+            src="https://lottie.host/0cdcd6d7-9466-4a00-bfdb-55d6aa7ec2d9/zpxi4nliNO.lottie"
+            loop
+            autoplay
+          />
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            Loading Conversations...
+          </p>
         </div>
       ) : filteredSessions.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-gray-500">

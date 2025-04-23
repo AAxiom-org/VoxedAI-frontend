@@ -1,6 +1,6 @@
-import { RefreshCwIcon } from 'lucide-react';
-import { ResearchDigest } from './types';
-import { formatRelativeTime } from './utils';
+import { RefreshCwIcon } from "lucide-react";
+import { ResearchDigest } from "./types";
+import { formatRelativeTime } from "./utils";
 
 interface DigestListProps {
   researchDigests: ResearchDigest[];
@@ -25,7 +25,7 @@ const DigestList = ({
   isGeneratingDigest,
   digestGenerationProgress,
   digestGenerationStatus,
-  digestGenerationError
+  digestGenerationError,
 }: DigestListProps) => {
   const handleClick = () => {
     if (!isGeneratingDigest) {
@@ -38,7 +38,7 @@ const DigestList = ({
     if (noteTitlesMap[noteId]) {
       return noteTitlesMap[noteId];
     }
-    
+
     // Fallback to a generic title
     return "Note";
   };
@@ -49,8 +49,8 @@ const DigestList = ({
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <h2 className="text-lg font-medium">Research Digests</h2>
-            <RefreshCwIcon 
-              className={`h-5 w-5 cursor-pointer ${isGeneratingDigest ? 'animate-spin text-indigo-500' : 'text-primary'}`}
+            <RefreshCwIcon
+              className={`h-5 w-5 cursor-pointer ${isGeneratingDigest ? "animate-spin text-indigo-500" : "text-primary"}`}
               onClick={handleClick}
             />
           </div>
@@ -68,19 +68,23 @@ const DigestList = ({
               <span className="mr-2">📚</span>
               Generating Research Digest
             </h3>
-            
+
             <div className="mb-3">
               <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-300 ease-in-out"
                   style={{ width: `${digestGenerationProgress}%` }}
                 ></div>
               </div>
-              <p className="text-right text-xs mt-1 text-gray-500">{digestGenerationProgress}%</p>
+              <p className="text-right text-xs mt-1 text-gray-500">
+                {digestGenerationProgress}%
+              </p>
             </div>
-            
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{digestGenerationStatus}</p>
-            
+
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              {digestGenerationStatus}
+            </p>
+
             {digestGenerationError && (
               <p className="text-sm text-red-500">{digestGenerationError}</p>
             )}
@@ -115,49 +119,63 @@ const DigestList = ({
                   </span>
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-3">
-                  <div dangerouslySetInnerHTML={{ __html: digest.content.substring(0, 200).replace(/#{1,6}\s[^\n]+/g, '').replace(/\n/g, '<br>') }} />
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: digest.content
+                        .substring(0, 200)
+                        .replace(/#{1,6}\s[^\n]+/g, "")
+                        .replace(/\n/g, "<br>"),
+                    }}
+                  />
                   <p className="mt-1">...</p>
                 </div>
-                
+
                 {/* Show related notes if any */}
-                {digest.related_note_ids && digest.related_note_ids.length > 0 && (
-                  <div className="flex flex-wrap mt-2">
-                    <span className="text-xs text-gray-500 mr-1">Related Notes:</span>
-                    {digest.related_note_ids.slice(0, 2).map((noteId: string, idx: number) => (
-                      <span
-                        key={`${noteId}-${idx}`}
-                        className="mr-2 mb-1 px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full truncate max-w-[150px]"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenNote(noteId);
-                        }}
-                      >
-                        {getNoteTitle(noteId)}
+                {digest.related_note_ids &&
+                  digest.related_note_ids.length > 0 && (
+                    <div className="flex flex-wrap mt-2">
+                      <span className="text-xs text-gray-500 mr-1">
+                        Related Notes:
                       </span>
-                    ))}
-                    {digest.related_note_ids.length > 2 && (
-                      <span className="text-xs text-gray-500 flex items-center">
-                        +{digest.related_note_ids.length - 2} more
-                      </span>
-                    )}
-                  </div>
-                )}
-                
+                      {digest.related_note_ids
+                        .slice(0, 2)
+                        .map((noteId: string, idx: number) => (
+                          <span
+                            key={`${noteId}-${idx}`}
+                            className="mr-2 mb-1 px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full truncate max-w-[150px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenNote(noteId);
+                            }}
+                          >
+                            {getNoteTitle(noteId)}
+                          </span>
+                        ))}
+                      {digest.related_note_ids.length > 2 && (
+                        <span className="text-xs text-gray-500 flex items-center">
+                          +{digest.related_note_ids.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                 {digest.all_links && digest.all_links.length > 0 && (
                   <div className="flex flex-wrap mt-2">
                     <span className="text-xs text-gray-500 mr-1">Sources:</span>
-                    {digest.all_links.slice(0, 2).map((link: string, index: number) => (
-                      <a
-                        key={index}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mr-2 mb-1 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full truncate max-w-[150px]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {new URL(link).hostname}
-                      </a>
-                    ))}
+                    {digest.all_links
+                      .slice(0, 2)
+                      .map((link: string, index: number) => (
+                        <a
+                          key={index}
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mr-2 mb-1 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full truncate max-w-[150px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {new URL(link).hostname}
+                        </a>
+                      ))}
                     {digest.all_links.length > 2 && (
                       <span className="text-xs text-gray-500 flex items-center">
                         +{digest.all_links.length - 2} more
@@ -183,4 +201,4 @@ const DigestList = ({
   );
 };
 
-export default DigestList; 
+export default DigestList;

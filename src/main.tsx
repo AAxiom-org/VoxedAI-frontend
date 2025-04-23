@@ -28,10 +28,10 @@ const queryClient = new QueryClient({
 const localization = {
   signIn: {
     start: {
-      subtitle: 'Welcome Back To Your Second Brain!',
-    }
+      subtitle: "Welcome Back To Your Second Brain!",
+    },
   },
-}
+};
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -65,14 +65,24 @@ createRoot(document.getElementById("root")!).render(
               backgroundColor: "transparent",
               background: "transparent",
             },
-            ...Object.fromEntries([
-              // All core elements
-              'card', 'form', 'cardBox', 'rootBox', 'popoverBox', 'actionCard'
-            ].map(elem => [elem, {
-              boxShadow: "none",
-              border: "none",
-              shadow: "none"
-            }]))
+            ...Object.fromEntries(
+              [
+                // All core elements
+                "card",
+                "form",
+                "cardBox",
+                "rootBox",
+                "popoverBox",
+                "actionCard",
+              ].map((elem) => [
+                elem,
+                {
+                  boxShadow: "none",
+                  border: "none",
+                  shadow: "none",
+                },
+              ]),
+            ),
           },
         }}
       >

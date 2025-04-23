@@ -8,6 +8,7 @@ import NoteModal from "../NoteModal";
 import NoteList from "./NoteList";
 import NoteEditor from "./NoteEditor";
 import type { SpaceFile } from "../../types/space";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 // Extended file type with visibility state
 interface ExtendedFile extends SpaceFile {
@@ -546,7 +547,12 @@ const NotesInterface = ({ noteId, onNoteSelect }: NotesInterfaceProps) => {
           {isLoadingNoteContent && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                <DotLottieReact
+                  className="w-10 md:w-10 lg:w-20"
+                  src="https://lottie.host/0cdcd6d7-9466-4a00-bfdb-55d6aa7ec2d9/zpxi4nliNO.lottie"
+                  loop
+                  autoplay
+                />
                 <p className="mt-4 text-gray-600 dark:text-gray-400">
                   Loading note...
                 </p>

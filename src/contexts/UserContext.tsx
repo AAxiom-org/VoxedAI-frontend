@@ -132,13 +132,14 @@ export function UserProvider({ children }: UserProviderProps) {
     // If we have a cached client, verify it's still valid first
     if (cachedClient) {
       // If token was recently refreshed, assume it's still valid
-      if (now - lastTokenRequestTime < 60000) { // 1 minute
+      if (now - lastTokenRequestTime < 60000) {
+        // 1 minute
         return cachedClient;
       }
-      
+
       // Check if cached client is still valid with a test query
       const isValid = await isClientValid(cachedClient);
-      
+
       if (isValid) {
         return cachedClient;
       } else {
@@ -146,15 +147,10 @@ export function UserProvider({ children }: UserProviderProps) {
         return refreshSupabaseToken();
       }
     }
-    
+
     // No cached client, get a fresh token
     return refreshSupabaseToken();
-  }, [
-    user,
-    cachedClient,
-    refreshSupabaseToken,
-    lastTokenRequestTime,
-  ]);
+  }, [user, cachedClient, refreshSupabaseToken, lastTokenRequestTime]);
 
   // Add an error handler effect that will refresh the token on 401/403 errors
   useEffect(() => {

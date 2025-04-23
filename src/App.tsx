@@ -65,6 +65,31 @@ export default function App() {
           }}
         />
         <Routes>
+          {/* Dev Routes */}
+          <Route
+            path="/sandbox"
+            element={
+              <>
+                <SignedIn>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <Sandbox />
+                  </Suspense>
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" />
+                </SignedOut>
+              </>
+            }
+          />
+          <Route
+            path="/loading"
+            element={
+              <>
+                <LoadingSpinner />
+              </>
+            }
+          />
+          {/* End Dev Routes */}
           <Route
             path="*"
             element={
@@ -110,7 +135,7 @@ export default function App() {
               </>
             }
           />
-          
+
           {/* Web App - Wrap lazy-loaded components with Suspense */}
           <Route
             path="/spaces"
@@ -118,7 +143,7 @@ export default function App() {
               <>
                 <SignedIn>
                   <Header />
-                  <Suspense fallback={<LoadingSpinner size="large" />}>
+                  <Suspense fallback={<LoadingSpinner />}>
                     <WorkspacesUI />
                   </Suspense>
                 </SignedIn>
@@ -133,23 +158,8 @@ export default function App() {
             element={
               <>
                 <SignedIn>
-                  <Suspense fallback={<LoadingSpinner size="large" />}>
+                  <Suspense fallback={<LoadingSpinner />}>
                     <SpaceUI />
-                  </Suspense>
-                </SignedIn>
-                <SignedOut>
-                  <Navigate to="/sign-in" />
-                </SignedOut>
-              </>
-            }
-          />
-          <Route
-            path="/sandbox"
-            element={
-              <>
-                <SignedIn>
-                  <Suspense fallback={<LoadingSpinner size="large" />}>
-                    <Sandbox />
                   </Suspense>
                 </SignedIn>
                 <SignedOut>

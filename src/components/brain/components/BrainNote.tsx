@@ -74,7 +74,13 @@ const BrainNoteComponent = ({
         }, 500);
       }
     },
-    [brainNoteId, brainNote, getSupabaseClient, isSavingNote, setBrainNoteContent],
+    [
+      brainNoteId,
+      brainNote,
+      getSupabaseClient,
+      isSavingNote,
+      setBrainNoteContent,
+    ],
   );
 
   // Clear brain note content
@@ -129,7 +135,7 @@ const BrainNoteComponent = ({
       // Update brainNote in state
       setBrainNote({
         ...brainNote!,
-        note_content: emptyContent
+        note_content: emptyContent,
       });
     } catch (error) {
       console.error("Error in handleClearBrainNote:", error);
@@ -146,7 +152,13 @@ const BrainNoteComponent = ({
             <span
               className={`ml-2 text-xs transition-opacity duration-300 ${isLoading ? "text-yellow-500" : error ? "text-red-500" : isSavingNote ? "text-yellow-500" : "text-green-500"}`}
             >
-              {isLoading ? "loading..." : error ? "error saving" : isSavingNote ? "saving..." : "saved"}
+              {isLoading
+                ? "loading..."
+                : error
+                  ? "error saving"
+                  : isSavingNote
+                    ? "saving..."
+                    : "saved"}
             </span>
           </div>
           <div className="flex space-x-2">
@@ -165,16 +177,14 @@ const BrainNoteComponent = ({
           </div>
         </div>
         <div className="flex mt-2">
-          {brainNote?.metadata?.tags?.map(
-            (tag: string, index: number) => (
-              <span
-                key={index}
-                className="mr-2 px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full"
-              >
-                {tag}
-              </span>
-            ),
-          )}
+          {brainNote?.metadata?.tags?.map((tag: string, index: number) => (
+            <span
+              key={index}
+              className="mr-2 px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -208,4 +218,4 @@ const BrainNoteComponent = ({
   );
 };
 
-export default BrainNoteComponent; 
+export default BrainNoteComponent;

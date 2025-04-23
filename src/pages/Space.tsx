@@ -561,7 +561,7 @@ const Space = () => {
   }, [layout.panelSizes?.sidebar]);
 
   return (
-    <div 
+    <div
       className="flex h-screen overflow-hidden bg-white dark:bg-gray-900"
       onDragEnter={(e) => {
         e.preventDefault();
@@ -583,11 +583,13 @@ const Space = () => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
-        
+
         const files = e.dataTransfer.files;
         if (files && files.length > 0 && fileInputRef.current) {
           fileInputRef.current.files = files;
-          handleFileUpload({ target: { files } } as React.ChangeEvent<HTMLInputElement>);
+          handleFileUpload({
+            target: { files },
+          } as React.ChangeEvent<HTMLInputElement>);
         }
       }}
     >

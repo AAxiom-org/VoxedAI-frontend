@@ -96,7 +96,9 @@ const HierarchicalGraph = ({
   // New states for Supabase data
   const [researchEntries, setResearchEntries] = useState<ResearchEntry[]>([]);
   const [relatedNoteIds, setRelatedNoteIds] = useState<string[]>([]);
-  const [noteTitlesMap, setNoteTitlesMap] = useState<Record<string, string>>({});
+  const [noteTitlesMap, setNoteTitlesMap] = useState<Record<string, string>>(
+    {},
+  );
   const [noteIdMap, setNoteIdMap] = useState<Record<string, string>>({});
   const [mainGraphData, setMainGraphData] = useState<GraphData | null>(null);
   const [detailedGraphs, setDetailedGraphs] = useState<DetailedGraphs>({});
@@ -105,7 +107,8 @@ const HierarchicalGraph = ({
 
   // Helper function to check if a string is a valid UUID
   const isUUID = (str: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   };
 
@@ -172,23 +175,25 @@ const HierarchicalGraph = ({
         .eq("space_id", spaceId);
 
       if (researchError) {
-        throw new Error(`Error fetching research data: ${researchError.message}`);
+        throw new Error(
+          `Error fetching research data: ${researchError.message}`,
+        );
       }
 
       if (researchData) {
         // Store all research entries
         setResearchEntries(researchData as ResearchEntry[]);
-        
+
         // Create mapping from note ID in metadata to content and related note IDs
         const entriesById = new Map<string, ResearchEntry>();
-        
+
         researchData.forEach((entry: ResearchEntry) => {
           // Store by metadata.id for easy lookup by graph node noteId
           if (entry.metadata && entry.metadata.id) {
             entriesById.set(entry.metadata.id, entry);
           }
         });
-        
+
         // If we have a selected node, find its related notes
         if (selectedNodeId && selectedNode) {
           const nodeId = selectedNode.noteId;
@@ -201,25 +206,25 @@ const HierarchicalGraph = ({
             }
           }
         }
-        
+
         // Fetch all files first to create necessary mappings
         const { data: allFiles, error: filesError } = await supabaseClient
           .from("space_files")
           .select("id, file_name, file_path, metadata, is_note")
           .eq("space_id", spaceId)
           .eq("is_note", true);
-          
+
         if (filesError) {
           console.error("Error fetching note files:", filesError);
         } else if (allFiles) {
           // Create mappings for note titles and file_name to id
           const noteTitles: Record<string, string> = {};
           const idMap: Record<string, string> = {};
-          
+
           allFiles.forEach((file: SpaceFile) => {
             // Store id by file_name for lookup
             idMap[file.file_name] = file.id;
-            
+
             // Get title from metadata or file_name
             if (file.metadata && file.metadata.title) {
               noteTitles[file.id] = file.metadata.title;
@@ -232,39 +237,47 @@ const HierarchicalGraph = ({
               noteTitles[file.id] = name;
             }
           });
-          
+
           setNoteTitlesMap(noteTitles);
           setNoteIdMap(idMap);
-          
+
           // Now process all related_note_ids
           const validatedRelatedNotes = new Map<string, string[]>();
-          
+
           researchData.forEach((entry: ResearchEntry) => {
             if (entry.related_note_ids && entry.related_note_ids.length > 0) {
               // Convert any filename references to actual UUIDs
-              const validatedIds = entry.related_note_ids.map(noteRef => {
-                // If it's already a UUID, use it directly
-                if (isUUID(noteRef)) {
-                  return noteRef;
-                }
-                // If it's a filename, try to get the UUID from our map
-                else if (idMap[noteRef]) {
-                  return idMap[noteRef];
-                }
-                // Otherwise, it's invalid - return empty string to filter out later
-                return "";
-              }).filter(id => id !== ""); // Remove any invalid/unmapped IDs
-              
+              const validatedIds = entry.related_note_ids
+                .map((noteRef) => {
+                  // If it's already a UUID, use it directly
+                  if (isUUID(noteRef)) {
+                    return noteRef;
+                  }
+                  // If it's a filename, try to get the UUID from our map
+                  else if (idMap[noteRef]) {
+                    return idMap[noteRef];
+                  }
+                  // Otherwise, it's invalid - return empty string to filter out later
+                  return "";
+                })
+                .filter((id) => id !== ""); // Remove any invalid/unmapped IDs
+
               // Store the validated IDs
               if (entry.metadata && entry.metadata.id) {
                 validatedRelatedNotes.set(entry.metadata.id, validatedIds);
               }
             }
           });
-          
+
           // Update any research entries we've found related notes for
-          if (selectedNode && selectedNode.noteId && validatedRelatedNotes.has(selectedNode.noteId)) {
-            setRelatedNoteIds(validatedRelatedNotes.get(selectedNode.noteId) || []);
+          if (
+            selectedNode &&
+            selectedNode.noteId &&
+            validatedRelatedNotes.has(selectedNode.noteId)
+          ) {
+            setRelatedNoteIds(
+              validatedRelatedNotes.get(selectedNode.noteId) || [],
+            );
           }
         }
       }
@@ -344,31 +357,33 @@ const HierarchicalGraph = ({
   // Load related notes when selectedNode changes
   useEffect(() => {
     if (!selectedNode || isLoading || !researchEntries.length) return;
-    
+
     // When a node is selected, find its research entry and related note IDs
     const nodeId = selectedNode.noteId;
     if (nodeId) {
       // Find research entry by matching the metadata.id with the node's noteId
       const entry = researchEntries.find(
-        entry => entry.metadata && entry.metadata.id === nodeId
+        (entry) => entry.metadata && entry.metadata.id === nodeId,
       );
-      
+
       if (entry) {
         // Set content for the markdown display
         setMarkdownContent(entry.content);
-        
+
         // Set related note IDs for the links, converting filenames to UUIDs where needed
-        const validatedIds = entry.related_note_ids 
-          ? entry.related_note_ids.map(noteRef => {
-              if (isUUID(noteRef)) {
-                return noteRef;
-              } else if (noteIdMap[noteRef]) {
-                return noteIdMap[noteRef];
-              }
-              return "";
-            }).filter(id => id !== "") // Remove any invalid/unmapped IDs
+        const validatedIds = entry.related_note_ids
+          ? entry.related_note_ids
+              .map((noteRef) => {
+                if (isUUID(noteRef)) {
+                  return noteRef;
+                } else if (noteIdMap[noteRef]) {
+                  return noteIdMap[noteRef];
+                }
+                return "";
+              })
+              .filter((id) => id !== "") // Remove any invalid/unmapped IDs
           : [];
-          
+
         setRelatedNoteIds(validatedIds);
       } else {
         setRelatedNoteIds([]);
@@ -412,7 +427,7 @@ const HierarchicalGraph = ({
         .d3Force("link")
         .distance((link: any) => link.distance || 240);
       // Increase centering force to pull components together
-      fgRef.current.d3Force("center").strength(0.75); 
+      fgRef.current.d3Force("center").strength(0.75);
 
       // Reheat simulation to apply new forces
       fgRef.current.d3ReheatSimulation();
@@ -429,24 +444,26 @@ const HierarchicalGraph = ({
       // Second-level navigation: from detailed graph to markdown content
       // Find research entry by matching the metadata.id with the node's noteId
       const entry = researchEntries.find(
-        entry => entry.metadata && entry.metadata.id === node.noteId
+        (entry) => entry.metadata && entry.metadata.id === node.noteId,
       );
-      
+
       if (entry) {
         setMarkdownContent(entry.content);
-        
+
         // Process related note IDs, converting filenames to UUIDs where needed
-        const validatedIds = entry.related_note_ids 
-          ? entry.related_note_ids.map(noteRef => {
-              if (isUUID(noteRef)) {
-                return noteRef;
-              } else if (noteIdMap[noteRef]) {
-                return noteIdMap[noteRef];
-              }
-              return "";
-            }).filter(id => id !== "")
+        const validatedIds = entry.related_note_ids
+          ? entry.related_note_ids
+              .map((noteRef) => {
+                if (isUUID(noteRef)) {
+                  return noteRef;
+                } else if (noteIdMap[noteRef]) {
+                  return noteIdMap[noteRef];
+                }
+                return "";
+              })
+              .filter((id) => id !== "")
           : [];
-          
+
         setRelatedNoteIds(validatedIds);
         setShowMarkdown(true);
       }
@@ -476,7 +493,7 @@ const HierarchicalGraph = ({
     if (!isUUID(noteId) && noteIdMap[noteId]) {
       noteId = noteIdMap[noteId];
     }
-    
+
     // Only proceed if we have a valid UUID
     if (isUUID(noteId)) {
       // Update layout state to open the note
@@ -664,13 +681,13 @@ const HierarchicalGraph = ({
   // Helper function to get note title from metadata
   const getNoteTitle = (noteId: string): string => {
     // If the noteId is a filename rather than UUID, try to convert it first
-    const actualId = isUUID(noteId) ? noteId : (noteIdMap[noteId] || noteId);
-    
+    const actualId = isUUID(noteId) ? noteId : noteIdMap[noteId] || noteId;
+
     // Look up the title in our map
     if (noteTitlesMap[actualId]) {
       return noteTitlesMap[actualId];
     }
-    
+
     // For filenames that didn't get mapped, try to extract a readable name
     if (!isUUID(noteId)) {
       return noteId
@@ -678,7 +695,7 @@ const HierarchicalGraph = ({
         .replace(/_/g, " ")
         .replace(/Note-/i, "");
     }
-    
+
     // Fallback to a generic title
     return "Note";
   };
@@ -717,7 +734,10 @@ const HierarchicalGraph = ({
   }
 
   return (
-    <div className={`relative h-full w-full ${currentView === "preview" ? "pointer-events-none" : ""}`} ref={containerRef}>
+    <div
+      className={`relative h-full w-full ${currentView === "preview" ? "pointer-events-none" : ""}`}
+      ref={containerRef}
+    >
       {currentView === "detailed" && (
         <button
           onClick={handleBackClick}
@@ -750,12 +770,13 @@ const HierarchicalGraph = ({
               if (fgRef.current) {
                 // Calculate appropriate padding based on the current view
                 let padding: number;
-                if (currentView === 'graph') {
+                if (currentView === "graph") {
                   padding = 150; // Padding for main graph view
-                } else if (currentView === 'detailed') {
+                } else if (currentView === "detailed") {
                   padding = 250; // More padding for detailed view (less zoom)
-                } else { // Covers 'preview'
-                  padding = 40;  // Keep tighter zoom for preview
+                } else {
+                  // Covers 'preview'
+                  padding = 40; // Keep tighter zoom for preview
                 }
                 fgRef.current.zoomToFit(400, padding);
               }
@@ -768,7 +789,9 @@ const HierarchicalGraph = ({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-20">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative">
             <div className="absolute top-0 left-0 right-0 bg-gray-50 p-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Related Notes</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                Related Notes
+              </h3>
               <button
                 onClick={handleCloseMarkdown}
                 className="text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -792,7 +815,9 @@ const HierarchicalGraph = ({
                     </button>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-sm">No related notes found</p>
+                  <p className="text-gray-500 text-sm">
+                    No related notes found
+                  </p>
                 )}
               </div>
             </div>

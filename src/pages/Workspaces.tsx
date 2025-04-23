@@ -13,6 +13,7 @@ import {
 import { createSpaceWithWorkspace } from "../services/spaceService";
 import { useFilterState } from "../hooks";
 import EmojiPickerModal from "../components/common/EmojiPicker";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 // Extend the Workspace type to include has_children
 interface Workspace extends BaseWorkspace {
@@ -1047,8 +1048,16 @@ const SpaceGalleryUI: React.FC = () => {
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 dark:border-white"></div>
+        <div className="flex flex-col items-center space-y-2 justify-center py-12">
+          <DotLottieReact
+            className="w-10 md:w-10 lg:w-20"
+            src="https://lottie.host/0cdcd6d7-9466-4a00-bfdb-55d6aa7ec2d9/zpxi4nliNO.lottie"
+            loop
+            autoplay
+          />
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            Loading Spaces...
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

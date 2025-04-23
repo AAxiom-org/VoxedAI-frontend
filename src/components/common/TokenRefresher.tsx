@@ -42,7 +42,7 @@ const TokenRefresher = () => {
     };
 
     // Add event listener for network errors
-    window.addEventListener('error', handleNetworkError, true);
+    window.addEventListener("error", handleNetworkError, true);
 
     // Clean up interval and event listener on component unmount
     return () => {
@@ -52,7 +52,7 @@ const TokenRefresher = () => {
       if (networkRetryRef.current) {
         clearTimeout(networkRetryRef.current);
       }
-      window.removeEventListener('error', handleNetworkError, true);
+      window.removeEventListener("error", handleNetworkError, true);
     };
   }, [refreshSupabaseToken]);
 

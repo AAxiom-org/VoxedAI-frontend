@@ -58,17 +58,22 @@ export async function createSupabaseClientWithToken(token: string) {
  */
 export async function isClientValid(client: any): Promise<boolean> {
   if (!client) return false;
-  
+
   try {
     // Make a simple query to test the client
     const { error } = await client.from("users").select("id").limit(1);
-    
+
     // If there's an auth error, the client is invalid
-    if (error && (error.code === "401" || error.code === "403" || error.message?.includes("JWT"))) {
+    if (
+      error &&
+      (error.code === "401" ||
+        error.code === "403" ||
+        error.message?.includes("JWT"))
+    ) {
       console.log("Token validation check failed:", error.message);
       return false;
     }
-    
+
     return true;
   } catch (err) {
     console.error("Error validating client:", err);

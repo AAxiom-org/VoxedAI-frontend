@@ -1,27 +1,23 @@
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+
 interface LoadingSpinnerProps {
   size?: "small" | "medium" | "large";
   className?: string;
 }
 
-const LoadingSpinner = ({
-  size = "medium",
-  className = "",
-}: LoadingSpinnerProps) => {
-  const sizeClasses = {
-    small: "h-4 w-4 border-2",
-    medium: "h-8 w-8 border-2",
-    large: "h-12 w-12 border-2",
-  };
-
+const LoadingSpinner = ({ className = "" }: LoadingSpinnerProps) => {
   return (
     <div
       className={`fixed inset-0 flex items-center justify-center ${className}`}
     >
       <div className="mx-auto text-center">
         <div className="flex justify-center mb-4">
-          <div
-            className={`animate-spin rounded-full ${sizeClasses[size]} border-t-primary border-r-gray-200 border-b-gray-200 border-l-gray-200 dark:border-t-primary dark:border-r-gray-700 dark:border-b-gray-700 dark:border-l-gray-700`}
-          ></div>
+          <DotLottieReact
+            className="w-20 md:w-20 lg:w-30"
+            src="https://lottie.host/0cdcd6d7-9466-4a00-bfdb-55d6aa7ec2d9/zpxi4nliNO.lottie"
+            loop
+            autoplay
+          />
         </div>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
           Loading...

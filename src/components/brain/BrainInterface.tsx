@@ -3,7 +3,12 @@ import { useSupabaseUser } from "../../contexts/UserContext";
 import HierarchicalGraph from "./Graph";
 import { useLayoutState } from "../../hooks/useLayoutState";
 import { isUUID } from "./components/utils";
-import { BrainNote, ResearchEntry, BrainStatistics, ResearchDigest } from "./components/types";
+import {
+  BrainNote,
+  ResearchEntry,
+  BrainStatistics,
+  ResearchDigest,
+} from "./components/types";
 
 // Import components
 import BrainNoteComponent from "./components/BrainNote";
@@ -32,46 +37,59 @@ const BrainInterface = ({
   const [recentEntries, setRecentEntries] = useState<ResearchEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCreatingBrainNote, setIsCreatingBrainNote] = useState<boolean>(false);
+  const [isCreatingBrainNote, setIsCreatingBrainNote] =
+    useState<boolean>(false);
   const [statistics, setStatistics] = useState<BrainStatistics>({
     totalEntries: 0,
     totalTags: 0,
-    lastUpdated: '',
-    entriesThisWeek: 0
+    lastUpdated: "",
+    entriesThisWeek: 0,
   });
   const [layout, setLayout] = useLayoutState();
   const { getSupabaseClient, supabaseUserId } = useSupabaseUser();
-  const [activeTab, setActiveTab] = useState<'brain' | 'digest'>('brain');
-  
+  const [activeTab, setActiveTab] = useState<"brain" | "digest">("brain");
+
   // State for research digests
   const [researchDigests, setResearchDigests] = useState<ResearchDigest[]>([]);
   const [isGeneratingDigest, setIsGeneratingDigest] = useState<boolean>(false);
-  const [digestGenerationStatus, setDigestGenerationStatus] = useState<string>("");
-  const [digestGenerationProgress, setDigestGenerationProgress] = useState<number>(0);
-  const [digestGenerationError, setDigestGenerationError] = useState<string | null>(null);
-  const [selectedDigest, setSelectedDigest] = useState<ResearchDigest | null>(null);
+  const [digestGenerationStatus, setDigestGenerationStatus] =
+    useState<string>("");
+  const [digestGenerationProgress, setDigestGenerationProgress] =
+    useState<number>(0);
+  const [digestGenerationError, setDigestGenerationError] = useState<
+    string | null
+  >(null);
+  const [selectedDigest, setSelectedDigest] = useState<ResearchDigest | null>(
+    null,
+  );
   const [isDigestModalOpen, setIsDigestModalOpen] = useState<boolean>(false);
-  
+
   // State for graph generation
   const [isGeneratingGraph, setIsGeneratingGraph] = useState<boolean>(false);
-  const [graphGenerationStatus, setGraphGenerationStatus] = useState<string>("");
-  const [graphGenerationProgress, setGraphGenerationProgress] = useState<number>(0);
-  const [graphGenerationError, setGraphGenerationError] = useState<string | null>(null);
-  
+  const [graphGenerationStatus, setGraphGenerationStatus] =
+    useState<string>("");
+  const [graphGenerationProgress, setGraphGenerationProgress] =
+    useState<number>(0);
+  const [graphGenerationError, setGraphGenerationError] = useState<
+    string | null
+  >(null);
+
   // Get note titles from note IDs - similar to what Graph.tsx does
-  const [noteTitlesMap, setNoteTitlesMap] = useState<Record<string, string>>({});
+  const [noteTitlesMap, setNoteTitlesMap] = useState<Record<string, string>>(
+    {},
+  );
   const [noteIdMap, setNoteIdMap] = useState<Record<string, string>>({});
 
   // Helper function to get note title from ID
   const getNoteTitle = (noteId: string): string => {
     // If the noteId is a filename rather than UUID, try to convert it first
-    const actualId = isUUID(noteId) ? noteId : (noteIdMap[noteId] || noteId);
-    
+    const actualId = isUUID(noteId) ? noteId : noteIdMap[noteId] || noteId;
+
     // Look up the title in our map
     if (noteTitlesMap[actualId]) {
       return noteTitlesMap[actualId];
     }
-    
+
     // For filenames that didn't get mapped, try to extract a readable name
     if (!isUUID(noteId)) {
       return noteId
@@ -79,7 +97,7 @@ const BrainInterface = ({
         .replace(/_/g, " ")
         .replace(/Note-/i, "");
     }
-    
+
     // Fallback to a generic title
     return "Note";
   };
@@ -90,7 +108,7 @@ const BrainInterface = ({
     if (!isUUID(noteId) && noteIdMap[noteId]) {
       noteId = noteIdMap[noteId];
     }
-    
+
     // Only proceed if we have a valid UUID
     if (isUUID(noteId)) {
       // Update layout state to open the note
@@ -167,13 +185,13 @@ const BrainInterface = ({
           console.error("Error fetching recent entries:", recentEntriesError);
         } else {
           setRecentEntries(recentEntriesData || []);
-          
+
           // Calculate statistics
           const allEntries = await supabaseClient
             .from("space_research")
             .select("id, created_at, updated_at, metadata")
             .eq("space_id", spaceId);
-            
+
           if (allEntries.data) {
             // Get unique tags
             const allTags = new Set();
@@ -182,42 +200,43 @@ const BrainInterface = ({
                 entry.metadata.tags.forEach((tag: string) => allTags.add(tag));
               }
             });
-            
+
             // Get entries from this week
             const oneWeekAgo = new Date();
             oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
             const entriesThisWeek = allEntries.data.filter(
-              (entry: any) => new Date(entry.created_at) > oneWeekAgo
+              (entry: any) => new Date(entry.created_at) > oneWeekAgo,
             ).length;
-            
+
             // Last updated
             const sortedByDate = [...allEntries.data].sort(
-              (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+              (a, b) =>
+                new Date(b.updated_at).getTime() -
+                new Date(a.updated_at).getTime(),
             );
-            
+
             setStatistics({
               totalEntries: allEntries.data.length,
               totalTags: allTags.size,
-              lastUpdated: sortedByDate[0]?.updated_at || '',
-              entriesThisWeek
+              lastUpdated: sortedByDate[0]?.updated_at || "",
+              entriesThisWeek,
             });
           }
         }
 
         // Fetch research digests
-        const { data: digestsData, error: digestsError } =
-          await supabaseClient
-            .from("space_digests")
-            .select("*")
-            .eq("space_id", spaceId)
-            .order("created_at", { ascending: false })
-            .limit(10);
+        const { data: digestsData, error: digestsError } = await supabaseClient
+          .from("space_digests")
+          .select("*")
+          .eq("space_id", spaceId)
+          .order("created_at", { ascending: false })
+          .limit(10);
 
         if (digestsError) {
           console.error("Error fetching research digests:", digestsError);
         } else {
           setResearchDigests(digestsData || []);
-          
+
           // Fetch all note files to build title and ID maps, if not already populated
           if (Object.keys(noteTitlesMap).length === 0) {
             const { data: allFiles, error: filesError } = await supabaseClient
@@ -225,18 +244,18 @@ const BrainInterface = ({
               .select("id, file_name, file_path, metadata, is_note")
               .eq("space_id", spaceId)
               .eq("is_note", true);
-              
+
             if (filesError) {
               console.error("Error fetching note files:", filesError);
             } else if (allFiles) {
               // Create mappings for note titles and file_name to id
               const noteTitles: Record<string, string> = {};
               const idMap: Record<string, string> = {};
-              
+
               allFiles.forEach((file: any) => {
                 // Store id by file_name for lookup
                 idMap[file.file_name] = file.id;
-                
+
                 // Get title from metadata or file_name
                 if (file.metadata && file.metadata.title) {
                   noteTitles[file.id] = file.metadata.title;
@@ -249,7 +268,7 @@ const BrainInterface = ({
                   noteTitles[file.id] = name;
                 }
               });
-              
+
               setNoteTitlesMap(noteTitles);
               setNoteIdMap(idMap);
             }
@@ -381,7 +400,7 @@ const BrainInterface = ({
     }
 
     // Switch to the digest tab to show the progress
-    setActiveTab('digest');
+    setActiveTab("digest");
 
     // Set up a refresh interval for real-time updates during generation
     const refreshInterval = setInterval(() => {
@@ -395,17 +414,20 @@ const BrainInterface = ({
       setDigestGenerationError(null);
 
       // Call the digest generation endpoint
-      const response = await fetch("https://voxed.aidanandrews.org/api/v1/research/digest", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://voxed.aidanandrews.org/api/v1/research/digest",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            space_id: spaceId,
+            user_id: supabaseUserId,
+            stream: true,
+          }),
         },
-        body: JSON.stringify({
-          space_id: spaceId,
-          user_id: supabaseUserId,
-          stream: true,
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -420,15 +442,15 @@ const BrainInterface = ({
       const progressStages = {
         "Starting digest generation...": 5,
         "Fetching notes from space...": 10,
-        "Found": 15, // Partial match for "Found X notes in space"
+        Found: 15, // Partial match for "Found X notes in space"
         "Generating search queries": 20,
-        "Generated": 25, // Partial match for "Generated X search queries"
+        Generated: 25, // Partial match for "Generated X search queries"
         "Performing web searches...": 30,
         "Searching query": 35, // Partial match for "Searching query X of Y"
         "Completed search": 60, // Partial match for "Completed search X of Y"
         "Generating research digest": 75,
         "Storing digest in database...": 90,
-        "Digest generation complete": 100
+        "Digest generation complete": 100,
       };
 
       // Process streaming response
@@ -447,13 +469,13 @@ const BrainInterface = ({
 
         for (const line of lines) {
           if (line.trim() === "" || !line.startsWith("data: ")) continue;
-          
+
           try {
             const eventData = JSON.parse(line.substring(6)); // Remove "data: " prefix
-            
+
             if (eventData.type === "status") {
               setDigestGenerationStatus(eventData.message);
-              
+
               // Update progress based on status message
               for (const [stage, progress] of Object.entries(progressStages)) {
                 if (eventData.message.includes(stage)) {
@@ -467,10 +489,10 @@ const BrainInterface = ({
             } else if (eventData.type === "done") {
               setDigestGenerationStatus("Digest generation complete");
               setDigestGenerationProgress(100);
-              
+
               // Refresh digests from the database
               refreshDigests();
-              
+
               // Set a timeout to change the state back after progress is complete
               setTimeout(() => {
                 setIsGeneratingDigest(false);
@@ -483,9 +505,11 @@ const BrainInterface = ({
       }
     } catch (e) {
       console.error("Error generating digest:", e);
-      setDigestGenerationError(e instanceof Error ? e.message : "Unknown error");
+      setDigestGenerationError(
+        e instanceof Error ? e.message : "Unknown error",
+      );
       setDigestGenerationStatus("Error generating digest");
-      
+
       // If there's an error, we'll wait a bit before stopping the spinner
       setTimeout(() => {
         setIsGeneratingDigest(false);
@@ -493,10 +517,10 @@ const BrainInterface = ({
     } finally {
       // Clear the refresh interval
       clearInterval(refreshInterval);
-      
+
       // No need to set isGeneratingDigest to false here as we handle it in the success/error cases
       // This prevents the spinner from stopping before the UI has a chance to show completion
-      
+
       // One final refresh to make sure we have the latest data
       refreshDigests();
     }
@@ -508,15 +532,14 @@ const BrainInterface = ({
 
     try {
       const supabaseClient = await getSupabaseClient();
-      
+
       // Fetch research digests
-      const { data: digestsData, error: digestsError } =
-        await supabaseClient
-          .from("space_digests")
-          .select("*")
-          .eq("space_id", spaceId)
-          .order("created_at", { ascending: false })
-          .limit(10);
+      const { data: digestsData, error: digestsError } = await supabaseClient
+        .from("space_digests")
+        .select("*")
+        .eq("space_id", spaceId)
+        .order("created_at", { ascending: false })
+        .limit(10);
 
       if (digestsError) {
         console.error("Error fetching research digests:", digestsError);
@@ -542,17 +565,20 @@ const BrainInterface = ({
       setGraphGenerationError(null);
 
       // Call the graph generation endpoint
-      const response = await fetch("https://voxed.aidanandrews.org/api/v1/graph/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://voxed.aidanandrews.org/api/v1/graph/generate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            space_id: spaceId,
+            user_id: supabaseUserId,
+            stream: true,
+          }),
         },
-        body: JSON.stringify({
-          space_id: spaceId,
-          user_id: supabaseUserId,
-          stream: true,
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -567,11 +593,11 @@ const BrainInterface = ({
       const progressStages = {
         "Starting graph generation...": 5,
         "Fetching notes from space...": 10,
-        "Found": 15, // Partial match for "Found X notes in space"
+        Found: 15, // Partial match for "Found X notes in space"
         "Analyzing notes and generating graph...": 30,
         "Storing graph in database...": 70,
-        "Storing": 80, // Partial match for "Storing X research entries in database..."
-        "Graph generation complete": 100
+        Storing: 80, // Partial match for "Storing X research entries in database..."
+        "Graph generation complete": 100,
       };
 
       // Process streaming response
@@ -590,13 +616,13 @@ const BrainInterface = ({
 
         for (const line of lines) {
           if (line.trim() === "" || !line.startsWith("data: ")) continue;
-          
+
           try {
             const eventData = JSON.parse(line.substring(6)); // Remove "data: " prefix
-            
+
             if (eventData.type === "status") {
               setGraphGenerationStatus(eventData.message);
-              
+
               // Update progress based on status message
               for (const [stage, progress] of Object.entries(progressStages)) {
                 if (eventData.message.includes(stage)) {
@@ -610,7 +636,7 @@ const BrainInterface = ({
             } else if (eventData.type === "done") {
               setGraphGenerationStatus("Graph generation complete");
               setGraphGenerationProgress(100);
-              
+
               // Refresh the graph if we're on the graph view
               if (currentView === "graph") {
                 window.location.reload();
@@ -668,13 +694,10 @@ const BrainInterface = ({
               <QuickStats statistics={statistics} />
 
               {/* Knowledge Graph Preview */}
-              <GraphPreview 
-                setCurrentView={setCurrentView}
-                spaceId={spaceId}
-              />
+              <GraphPreview setCurrentView={setCurrentView} spaceId={spaceId} />
 
               {/* Quick Actions */}
-              <QuickActions 
+              <QuickActions
                 handleRebuildGraph={handleRebuildGraph}
                 handleOpenEditor={handleOpenEditor}
                 isGeneratingGraph={isGeneratingGraph}
@@ -687,23 +710,23 @@ const BrainInterface = ({
               <div className="bg-background rounded-lg flex flex-col h-full">
                 <div className="bg-background">
                   <div className="flex">
-                    <button 
+                    <button
                       className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                        activeTab === 'brain' 
-                          ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
-                          : 'border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                        activeTab === "brain"
+                          ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                          : "border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                       }`}
-                      onClick={() => setActiveTab('brain')}
+                      onClick={() => setActiveTab("brain")}
                     >
                       Second Brain Note
                     </button>
-                    <button 
+                    <button
                       className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                        activeTab === 'digest' 
-                          ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' 
-                          : 'border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                        activeTab === "digest"
+                          ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                          : "border-transparent text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                       }`}
-                      onClick={() => setActiveTab('digest')}
+                      onClick={() => setActiveTab("digest")}
                     >
                       Recent Research Digest
                     </button>
@@ -712,17 +735,17 @@ const BrainInterface = ({
 
                 <div className="flex-1 overflow-auto">
                   {/* Progress Modals */}
-                  <ProgressModal 
+                  <ProgressModal
                     isActive={isGeneratingGraph}
                     title="Generating Knowledge Graph"
                     progress={graphGenerationProgress}
                     status={graphGenerationStatus}
                     error={graphGenerationError}
                   />
-                  
+
                   {/* Brain Note Card */}
-                  {activeTab === 'brain' && (
-                    <BrainNoteComponent 
+                  {activeTab === "brain" && (
+                    <BrainNoteComponent
                       brainNote={brainNote}
                       brainNoteId={brainNoteId}
                       brainNoteContent={brainNoteContent}
@@ -736,7 +759,7 @@ const BrainInterface = ({
 
                   {/* Digest Modal */}
                   {isDigestModalOpen && selectedDigest && (
-                    <DigestModal 
+                    <DigestModal
                       selectedDigest={selectedDigest}
                       handleCloseDigestModal={handleCloseDigestModal}
                       getNoteTitle={getNoteTitle}
@@ -745,8 +768,8 @@ const BrainInterface = ({
                   )}
 
                   {/* Recent Digest */}
-                  {activeTab === 'digest' && (
-                    <DigestList 
+                  {activeTab === "digest" && (
+                    <DigestList
                       researchDigests={researchDigests}
                       isLoading={isLoading}
                       handleGenerateDigest={handleGenerateDigest}
@@ -783,6 +806,6 @@ const BrainInterface = ({
       )}
     </div>
   );
-}
+};
 
 export default BrainInterface;
